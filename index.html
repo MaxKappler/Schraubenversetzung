@@ -1,0 +1,619 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f4f0">
+  <meta name="description" content="Drehbares 3D-Atommodell einer Schraubenversetzung im einfach kubischen Gitter. 320 gleichfarbige Atomkugeln, ohne Installation.">
+  <title>Schraubenversetzung · SC-Atommodell</title>
+  <style>
+    :root { color-scheme: light; --bg:#f5f4f0; --paper:#fff; --ink:#292c2d; --muted:#696e70; --line:#e2e2dc; --accent:#945039; }
+    * { box-sizing:border-box; }
+    [hidden] { display:none !important; }
+    body { margin:0; color:var(--ink); background:var(--bg); font:15px/1.55 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    button, input, select { font:inherit; }
+    button, select { color:inherit; }
+    button { cursor:pointer; }
+    button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline:3px solid var(--accent); outline-offset:4px; }
+    a { color:var(--accent); text-underline-offset:4px; }
+    .shell { width:min(1280px,100% - 72px); margin:auto; }
+    .masthead { padding:25px 0 20px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--line); gap:20px; }
+    .brand { display:flex; align-items:center; gap:11px; font-size:12px; font-weight:650; letter-spacing:.13em; text-transform:uppercase; }
+    .brand svg { width:27px; height:27px; color:var(--accent); }
+    .edition { font-size:12px; color:var(--muted); }
+    .intro { display:flex; align-items:flex-end; justify-content:space-between; padding:32px 0 25px; gap:24px; }
+    .eyebrow { margin:0 0 7px; font-size:11px; letter-spacing:.17em; text-transform:uppercase; color:var(--accent); font-weight:700; }
+    h1 { font:400 clamp(30px,3.6vw,46px)/1.15 Georgia,"Times New Roman",serif; letter-spacing:-.035em; margin:0 0 10px; }
+    .intro p:last-child { margin:0; color:var(--muted); max-width:630px; }
+    .badges { display:flex; gap:7px; flex:none; padding-bottom:3px; }
+    .badge { border:1px solid #d7d9d3; border-radius:6px; padding:7px 11px; font-size:12px; white-space:nowrap; }
+    .workbench { display:grid; grid-template-columns:minmax(0,1fr) 254px; background:var(--paper); border:1px solid var(--line); border-radius:16px; overflow:hidden; box-shadow:0 6px 24px #252b2310; }
+    .viewport { position:relative; min-width:0; min-height:clamp(440px,65vh,690px); background:radial-gradient(ellipse at 50% 48%,#fff 0%,#fafbf9 65%,#f1f3ee 100%); }
+    canvas { position:absolute; inset:0; display:block; width:100%; height:100%; cursor:grab; touch-action:none; }
+    canvas:active { cursor:grabbing; }
+    canvas:focus-visible { outline:3px solid var(--accent); outline-offset:-5px; }
+    .scene-caption { position:absolute; top:20px; left:22px; pointer-events:none; color:var(--muted); font-size:11px; letter-spacing:.08em; text-transform:uppercase; }
+    .scene-caption strong { display:block; font-size:12px; color:#424849; margin-top:3px; font-weight:500; letter-spacing:0; text-transform:none; }
+    .scene-footer { position:absolute; left:22px; bottom:18px; font-size:11px; color:var(--muted); pointer-events:none; }
+    .fullscreen { position:absolute; top:16px; right:16px; width:38px; height:38px; border:1px solid var(--line); border-radius:8px; background:#ffffffcf; display:grid; place-items:center; }
+    .fullscreen svg { width:17px; height:17px; }
+    .viewport:fullscreen { width:100vw; height:100vh; }
+    .controls { border-left:1px solid var(--line); padding:25px 22px 22px; display:flex; flex-direction:column; gap:23px; }
+    .controls h2 { font-size:13px; font-weight:650; margin:0 0 12px; }
+    .field { display:block; }
+    .field-title { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; font-size:12px; font-weight:600; }
+    output { font-weight:400; color:var(--muted); font-variant-numeric:tabular-nums; }
+    .views { display:grid; grid-template-columns:1fr; gap:7px; }
+    .view { padding:9px 12px; min-height:40px; background:white; border:1px solid var(--line); border-radius:7px; text-align:left; display:flex; align-items:center; gap:10px; font-size:12px; }
+    .view svg { width:18px; height:18px; opacity:.7; }
+    .view[aria-pressed="true"] { background:#f3eee8; border-color:#d5b7a7; color:#713b28; }
+    .view:hover, .reset:hover, .fullscreen:hover { background:#f4f3ef; }
+    input[type=range] { display:block; width:100%; margin:0; accent-color:var(--accent); cursor:pointer; height:24px; }
+    select { display:block; width:100%; border:1px solid var(--line); border-radius:7px; background:white; padding:10px; font-size:12px; }
+    .toggles { display:grid; gap:14px; }
+    .toggle { display:flex; align-items:center; gap:9px; font-size:12px; cursor:pointer; }
+    .toggle input { width:16px; height:16px; margin:0; accent-color:var(--accent); }
+    .reset { margin-top:auto; width:100%; min-height:40px; padding:9px 12px; background:#fafaf8; border:1px solid var(--line); border-radius:7px; font-size:12px; }
+    .status { min-height:18px; margin:0; font-size:11px; color:var(--muted); }
+    .bottom { display:flex; justify-content:space-between; align-items:center; gap:18px; padding:17px 2px; color:var(--muted); font-size:12px; }
+    .hint { margin:0; }
+    .download { flex:none; font-size:12px; }
+    details { margin:5px 0 35px; border-top:1px solid var(--line); padding-top:15px; color:var(--muted); font-size:13px; }
+    summary { cursor:pointer; color:var(--ink); width:fit-content; }
+    .explanation { max-width:800px; padding-top:3px; }
+    .explanation p { margin:11px 0; }
+    .formula { display:block; padding:12px 16px; background:#edece7; border-radius:6px; color:#454a4b; font:12px/1.8 ui-monospace,Consolas,monospace; overflow-wrap:anywhere; }
+    .fallback { padding:20px; color:#7e2c1f; }
+    .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+    @media (max-width:850px) {
+      .shell { width:calc(100% - 36px); }
+      .intro { align-items:flex-start; flex-direction:column; gap:15px; padding-top:25px; }
+      .workbench { grid-template-columns:1fr; }
+      .viewport { min-height:0; height:clamp(360px,58vh,590px); }
+      .controls { border-left:0; border-top:1px solid var(--line); display:grid; grid-template-columns:1fr 1fr; gap:20px; padding:20px; }
+      .view-group { grid-column:1/-1; }
+      .views { grid-template-columns:repeat(3,1fr); }
+      .view { justify-content:center; padding:9px 7px; }
+      .reset { align-self:end; }
+      .status { grid-column:1/-1; }
+      .bottom { align-items:flex-start; }
+      .hint { max-width:60%; }
+    }
+    @media (max-width:430px) {
+      .shell { width:calc(100% - 24px); }
+      .masthead { padding:18px 0 14px; }
+      .brand { font-size:10px; gap:7px; letter-spacing:.09em; }
+      .edition { font-size:10px; }
+      .intro p:last-child { font-size:13px; }
+      .controls { padding:17px; gap:19px 15px; }
+      .view { font-size:11px; gap:6px; }
+      .view svg { width:15px; }
+      .scene-caption { left:15px; top:17px; }
+      .scene-footer { left:15px; }
+      .bottom { flex-direction:column; gap:8px; }
+      .hint { max-width:none; }
+    }
+    @media (prefers-reduced-motion:reduce) { *, *::before, *::after { scroll-behavior:auto !important; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="masthead">
+      <div class="brand"><svg viewBox="0 0 28 28" fill="none" aria-hidden="true"><path d="M6 8 14 3 22 8v12l-8 5-8-5Z M6 8l8 5 8-5M14 13v12" stroke="currentColor" stroke-width="1.2"/><g fill="currentColor"><circle cx="6" cy="8" r="2"/><circle cx="14" cy="3" r="2"/><circle cx="22" cy="8" r="2"/><circle cx="14" cy="13" r="2"/><circle cx="6" cy="20" r="2"/><circle cx="22" cy="20" r="2"/><circle cx="14" cy="25" r="2"/></g></svg>Kristall · Labor</div>
+      <span class="edition">Interaktives Atommodell</span>
+    </header>
+    <section class="intro" aria-labelledby="title">
+      <div><p class="eyebrow">Einfach kubisches Gitter</p><h1 id="title">Schraubenversetzung</h1><p>Erkunde die räumliche Verzerrung des Gitters. Ziehe das Modell, um es von allen Seiten zu betrachten.</p></div>
+      <div class="badges"><span class="badge">320 Atome</span><span class="badge">b = a [001]</span></div>
+    </section>
+    <section class="workbench" aria-label="3D-Modell und Darstellungseinstellungen">
+      <div class="viewport" id="viewport">
+        <div class="scene-caption">3D-Ansicht<strong id="scene-label">Ganzes Gitter · 8 × 8 × 5 Atome</strong></div>
+        <canvas id="model" tabindex="0" aria-label="Drehbares 3D-Atommodell einer SC-Schraubenversetzung. Alle Atomkugeln sind gleich grau. Mit der Maus oder einem Finger ziehen zum Drehen, mit dem Mausrad oder zwei Fingern zoomen. Mit den Pfeiltasten drehen, Plus und Minus zoomen, R setzt die Ansicht zurück." aria-describedby="interaction-hint">Dein Browser unterstützt die Canvas-Darstellung nicht.</canvas>
+        <button class="fullscreen" id="fullscreen" title="Vollbild" aria-label="Modell im Vollbild anzeigen" type="button" hidden><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M7 3H3v4m10-4h4v4M3 13v4h4m10-4v4h-4"/></svg></button>
+        <span class="scene-footer">Orthografische Projektion · Längen in a</span>
+      </div>
+      <aside class="controls" aria-label="Darstellung">
+        <div class="view-group"><h2>Blickrichtung</h2><div class="views" role="group" aria-label="Voreingestellte Ansichten">
+          <button class="view" data-view="spatial" aria-pressed="true" type="button"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><path d="m3 6 7-4 7 4v8l-7 4-7-4ZM3 6l7 4 7-4M10 10v8"/></svg>Räumlich</button>
+          <button class="view" data-view="top" aria-pressed="false" type="button"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><path d="M3 3h14v14H3zM3 10h14M10 3v14"/></svg>Von oben</button>
+          <button class="view" data-view="side" aria-pressed="false" type="button"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><path d="M3 4h14v12H3zM3 8h14M3 12h14"/></svg>Von der Seite</button>
+        </div></div>
+        <label class="field"><span class="field-title">Zoom <output id="zoom-value" for="zoom">100 %</output></span><input id="zoom" type="range" min="0.55" max="2.5" step="0.01" value="1" aria-label="Zoom"></label>
+        <label class="field"><span class="field-title">Kugelradius <output id="radius-value" for="radius">0,28 a</output></span><input id="radius" type="range" min="0.18" max="0.38" step="0.01" value="0.28" aria-label="Kugelradius"></label>
+        <label class="field"><span class="field-title">Ausschnitt</span><select id="crop" aria-label="Ausschnitt"><option value="all">Ganzes Gitter · 320 Atome</option><option value="core">Kernumgebung · 80 Atome</option></select></label>
+        <div class="toggles"><label class="toggle"><input id="axis" type="checkbox">Versetzungslinie zeigen</label><label class="toggle"><input id="spin" type="checkbox">Automatisch drehen</label></div>
+        <button class="reset" id="reset" type="button">Darstellung zurücksetzen</button>
+        <p class="status" id="status" role="status" aria-live="polite"></p>
+      </aside>
+    </section>
+    <div class="bottom"><p class="hint" id="interaction-hint">Ziehen: drehen · Mausrad / zwei Finger: zoomen<br>Tastatur im Modell: Pfeiltasten, + / − und R</p><a class="download" href="./Atomkoordinaten.csv" download>Atomkoordinaten herunterladen ↗</a></div>
+    <details><summary>Über dieses Modell</summary><div class="explanation">
+      <p>Das Modell zeigt eine <strong>Schraubenversetzung</strong> im einfach kubischen Gitter (SC). Der Burgersvektor b = a [001] verläuft parallel zur Versetzungslinie. a ist die Gitterkonstante. Alle Kugeln haben dieselbe Farbe und denselben Radius; es wird keine einzelne Atomlage farblich hervorgehoben.</p>
+      <p>Die 320 Atomzentren entsprechen dem geometrischen Winkelmodell. Die Kugeln haben anfangs den Radius 0,28 a und berühren sich nicht. Der Radiusregler verändert ausschließlich die Darstellung, nicht die Atompositionen.</p>
+      <code class="formula">x/a = i + ½, &nbsp; y/a = j + ½<br>z/a = k + θ/(2π) − ½<br>θ = atan2(y, x) modulo 2π<br>i, j = −4, …, 3; &nbsp; k = −2, …, 2</code>
+      <p><strong>Gültigkeit:</strong> Die Struktur basiert auf dem elastischen Verschiebungsfeld. Der Versetzungskern und die freien Oberflächen sind nicht atomistisch relaxiert. Die Kernansicht ist ein vergrößerter Ausschnitt desselben Modells.</p>
+      <p>Literatur: <a href="https://doi.org/10.1186/s40736-018-0037-8" target="_blank" rel="noopener noreferrer">Hamada et al. (2018)</a> · <a href="https://doi.org/10.1103/PhysRevB.71.134105" target="_blank" rel="noopener noreferrer">Carpio &amp; Bonilla (2005)</a></p>
+    </div></details>
+    <noscript><p class="fallback">Bitte aktiviere JavaScript, um das Atommodell zu drehen. Die Atomkoordinaten sind auch ohne JavaScript als CSV verfügbar.</p></noscript>
+  </main>
+  <script id="atom-data" type="application/json">[
+{"x":-3.5,"y":-3.5,"z":-1.875,"i":-4,"j":-4,"k":-2},
+{"x":-3.5,"y":-2.5,"z":-1.9012842283556268,"i":-4,"j":-3,"k":-2},
+{"x":-3.5,"y":-1.5,"z":-1.9355594707954218,"i":-4,"j":-2,"k":-2},
+{"x":-3.5,"y":-0.5,"z":-1.9774163823495667,"i":-4,"j":-1,"k":-2},
+{"x":-3.5,"y":0.5,"z":-2.022583617650433,"i":-4,"j":0,"k":-2},
+{"x":-3.5,"y":1.5,"z":-2.064440529204578,"i":-4,"j":1,"k":-2},
+{"x":-3.5,"y":2.5,"z":-2.098715771644373,"i":-4,"j":2,"k":-2},
+{"x":-3.5,"y":3.5,"z":-2.125,"i":-4,"j":3,"k":-2},
+{"x":-2.5,"y":-3.5,"z":-1.8487157716443732,"i":-3,"j":-4,"k":-2},
+{"x":-2.5,"y":-2.5,"z":-1.875,"i":-3,"j":-3,"k":-2},
+{"x":-2.5,"y":-1.5,"z":-1.9139895651886847,"i":-3,"j":-2,"k":-2},
+{"x":-2.5,"y":-0.5,"z":-1.9685835209054994,"i":-3,"j":-1,"k":-2},
+{"x":-2.5,"y":0.5,"z":-2.0314164790945006,"i":-3,"j":0,"k":-2},
+{"x":-2.5,"y":1.5,"z":-2.0860104348113153,"i":-3,"j":1,"k":-2},
+{"x":-2.5,"y":2.5,"z":-2.125,"i":-3,"j":2,"k":-2},
+{"x":-2.5,"y":3.5,"z":-2.151284228355627,"i":-3,"j":3,"k":-2},
+{"x":-1.5,"y":-3.5,"z":-1.8144405292045782,"i":-2,"j":-4,"k":-2},
+{"x":-1.5,"y":-2.5,"z":-1.8360104348113153,"i":-2,"j":-3,"k":-2},
+{"x":-1.5,"y":-1.5,"z":-1.875,"i":-2,"j":-2,"k":-2},
+{"x":-1.5,"y":-0.5,"z":-1.9487918088252165,"i":-2,"j":-1,"k":-2},
+{"x":-1.5,"y":0.5,"z":-2.0512081911747835,"i":-2,"j":0,"k":-2},
+{"x":-1.5,"y":1.5,"z":-2.125,"i":-2,"j":1,"k":-2},
+{"x":-1.5,"y":2.5,"z":-2.1639895651886847,"i":-2,"j":2,"k":-2},
+{"x":-1.5,"y":3.5,"z":-2.185559470795422,"i":-2,"j":3,"k":-2},
+{"x":-0.5,"y":-3.5,"z":-1.7725836176504333,"i":-1,"j":-4,"k":-2},
+{"x":-0.5,"y":-2.5,"z":-1.7814164790945006,"i":-1,"j":-3,"k":-2},
+{"x":-0.5,"y":-1.5,"z":-1.8012081911747835,"i":-1,"j":-2,"k":-2},
+{"x":-0.5,"y":-0.5,"z":-1.875,"i":-1,"j":-1,"k":-2},
+{"x":-0.5,"y":0.5,"z":-2.125,"i":-1,"j":0,"k":-2},
+{"x":-0.5,"y":1.5,"z":-2.1987918088252165,"i":-1,"j":1,"k":-2},
+{"x":-0.5,"y":2.5,"z":-2.2185835209054994,"i":-1,"j":2,"k":-2},
+{"x":-0.5,"y":3.5,"z":-2.227416382349567,"i":-1,"j":3,"k":-2},
+{"x":0.5,"y":-3.5,"z":-1.7274163823495667,"i":0,"j":-4,"k":-2},
+{"x":0.5,"y":-2.5,"z":-1.7185835209054994,"i":0,"j":-3,"k":-2},
+{"x":0.5,"y":-1.5,"z":-1.6987918088252165,"i":0,"j":-2,"k":-2},
+{"x":0.5,"y":-0.5,"z":-1.625,"i":0,"j":-1,"k":-2},
+{"x":0.5,"y":0.5,"z":-2.375,"i":0,"j":0,"k":-2},
+{"x":0.5,"y":1.5,"z":-2.3012081911747835,"i":0,"j":1,"k":-2},
+{"x":0.5,"y":2.5,"z":-2.2814164790945006,"i":0,"j":2,"k":-2},
+{"x":0.5,"y":3.5,"z":-2.272583617650433,"i":0,"j":3,"k":-2},
+{"x":1.5,"y":-3.5,"z":-1.6855594707954218,"i":1,"j":-4,"k":-2},
+{"x":1.5,"y":-2.5,"z":-1.6639895651886847,"i":1,"j":-3,"k":-2},
+{"x":1.5,"y":-1.5,"z":-1.625,"i":1,"j":-2,"k":-2},
+{"x":1.5,"y":-0.5,"z":-1.5512081911747835,"i":1,"j":-1,"k":-2},
+{"x":1.5,"y":0.5,"z":-2.4487918088252165,"i":1,"j":0,"k":-2},
+{"x":1.5,"y":1.5,"z":-2.375,"i":1,"j":1,"k":-2},
+{"x":1.5,"y":2.5,"z":-2.3360104348113153,"i":1,"j":2,"k":-2},
+{"x":1.5,"y":3.5,"z":-2.314440529204578,"i":1,"j":3,"k":-2},
+{"x":2.5,"y":-3.5,"z":-1.6512842283556268,"i":2,"j":-4,"k":-2},
+{"x":2.5,"y":-2.5,"z":-1.625,"i":2,"j":-3,"k":-2},
+{"x":2.5,"y":-1.5,"z":-1.5860104348113153,"i":2,"j":-2,"k":-2},
+{"x":2.5,"y":-0.5,"z":-1.5314164790945006,"i":2,"j":-1,"k":-2},
+{"x":2.5,"y":0.5,"z":-2.4685835209054994,"i":2,"j":0,"k":-2},
+{"x":2.5,"y":1.5,"z":-2.4139895651886847,"i":2,"j":1,"k":-2},
+{"x":2.5,"y":2.5,"z":-2.375,"i":2,"j":2,"k":-2},
+{"x":2.5,"y":3.5,"z":-2.348715771644373,"i":2,"j":3,"k":-2},
+{"x":3.5,"y":-3.5,"z":-1.625,"i":3,"j":-4,"k":-2},
+{"x":3.5,"y":-2.5,"z":-1.5987157716443732,"i":3,"j":-3,"k":-2},
+{"x":3.5,"y":-1.5,"z":-1.5644405292045782,"i":3,"j":-2,"k":-2},
+{"x":3.5,"y":-0.5,"z":-1.5225836176504333,"i":3,"j":-1,"k":-2},
+{"x":3.5,"y":0.5,"z":-2.477416382349567,"i":3,"j":0,"k":-2},
+{"x":3.5,"y":1.5,"z":-2.435559470795422,"i":3,"j":1,"k":-2},
+{"x":3.5,"y":2.5,"z":-2.401284228355627,"i":3,"j":2,"k":-2},
+{"x":3.5,"y":3.5,"z":-2.375,"i":3,"j":3,"k":-2},
+{"x":-3.5,"y":-3.5,"z":-0.875,"i":-4,"j":-4,"k":-1},
+{"x":-3.5,"y":-2.5,"z":-0.9012842283556267,"i":-4,"j":-3,"k":-1},
+{"x":-3.5,"y":-1.5,"z":-0.9355594707954217,"i":-4,"j":-2,"k":-1},
+{"x":-3.5,"y":-0.5,"z":-0.9774163823495667,"i":-4,"j":-1,"k":-1},
+{"x":-3.5,"y":0.5,"z":-1.0225836176504333,"i":-4,"j":0,"k":-1},
+{"x":-3.5,"y":1.5,"z":-1.0644405292045782,"i":-4,"j":1,"k":-1},
+{"x":-3.5,"y":2.5,"z":-1.0987157716443732,"i":-4,"j":2,"k":-1},
+{"x":-3.5,"y":3.5,"z":-1.125,"i":-4,"j":3,"k":-1},
+{"x":-2.5,"y":-3.5,"z":-0.8487157716443733,"i":-3,"j":-4,"k":-1},
+{"x":-2.5,"y":-2.5,"z":-0.875,"i":-3,"j":-3,"k":-1},
+{"x":-2.5,"y":-1.5,"z":-0.9139895651886847,"i":-3,"j":-2,"k":-1},
+{"x":-2.5,"y":-0.5,"z":-0.9685835209054995,"i":-3,"j":-1,"k":-1},
+{"x":-2.5,"y":0.5,"z":-1.0314164790945006,"i":-3,"j":0,"k":-1},
+{"x":-2.5,"y":1.5,"z":-1.0860104348113153,"i":-3,"j":1,"k":-1},
+{"x":-2.5,"y":2.5,"z":-1.125,"i":-3,"j":2,"k":-1},
+{"x":-2.5,"y":3.5,"z":-1.1512842283556268,"i":-3,"j":3,"k":-1},
+{"x":-1.5,"y":-3.5,"z":-0.8144405292045783,"i":-2,"j":-4,"k":-1},
+{"x":-1.5,"y":-2.5,"z":-0.8360104348113153,"i":-2,"j":-3,"k":-1},
+{"x":-1.5,"y":-1.5,"z":-0.875,"i":-2,"j":-2,"k":-1},
+{"x":-1.5,"y":-0.5,"z":-0.9487918088252166,"i":-2,"j":-1,"k":-1},
+{"x":-1.5,"y":0.5,"z":-1.0512081911747835,"i":-2,"j":0,"k":-1},
+{"x":-1.5,"y":1.5,"z":-1.125,"i":-2,"j":1,"k":-1},
+{"x":-1.5,"y":2.5,"z":-1.1639895651886847,"i":-2,"j":2,"k":-1},
+{"x":-1.5,"y":3.5,"z":-1.1855594707954218,"i":-2,"j":3,"k":-1},
+{"x":-0.5,"y":-3.5,"z":-0.7725836176504333,"i":-1,"j":-4,"k":-1},
+{"x":-0.5,"y":-2.5,"z":-0.7814164790945005,"i":-1,"j":-3,"k":-1},
+{"x":-0.5,"y":-1.5,"z":-0.8012081911747834,"i":-1,"j":-2,"k":-1},
+{"x":-0.5,"y":-0.5,"z":-0.875,"i":-1,"j":-1,"k":-1},
+{"x":-0.5,"y":0.5,"z":-1.125,"i":-1,"j":0,"k":-1},
+{"x":-0.5,"y":1.5,"z":-1.1987918088252165,"i":-1,"j":1,"k":-1},
+{"x":-0.5,"y":2.5,"z":-1.2185835209054994,"i":-1,"j":2,"k":-1},
+{"x":-0.5,"y":3.5,"z":-1.2274163823495667,"i":-1,"j":3,"k":-1},
+{"x":0.5,"y":-3.5,"z":-0.7274163823495667,"i":0,"j":-4,"k":-1},
+{"x":0.5,"y":-2.5,"z":-0.7185835209054995,"i":0,"j":-3,"k":-1},
+{"x":0.5,"y":-1.5,"z":-0.6987918088252166,"i":0,"j":-2,"k":-1},
+{"x":0.5,"y":-0.5,"z":-0.625,"i":0,"j":-1,"k":-1},
+{"x":0.5,"y":0.5,"z":-1.375,"i":0,"j":0,"k":-1},
+{"x":0.5,"y":1.5,"z":-1.3012081911747835,"i":0,"j":1,"k":-1},
+{"x":0.5,"y":2.5,"z":-1.2814164790945006,"i":0,"j":2,"k":-1},
+{"x":0.5,"y":3.5,"z":-1.2725836176504333,"i":0,"j":3,"k":-1},
+{"x":1.5,"y":-3.5,"z":-0.6855594707954217,"i":1,"j":-4,"k":-1},
+{"x":1.5,"y":-2.5,"z":-0.6639895651886847,"i":1,"j":-3,"k":-1},
+{"x":1.5,"y":-1.5,"z":-0.625,"i":1,"j":-2,"k":-1},
+{"x":1.5,"y":-0.5,"z":-0.5512081911747834,"i":1,"j":-1,"k":-1},
+{"x":1.5,"y":0.5,"z":-1.4487918088252165,"i":1,"j":0,"k":-1},
+{"x":1.5,"y":1.5,"z":-1.375,"i":1,"j":1,"k":-1},
+{"x":1.5,"y":2.5,"z":-1.3360104348113153,"i":1,"j":2,"k":-1},
+{"x":1.5,"y":3.5,"z":-1.3144405292045782,"i":1,"j":3,"k":-1},
+{"x":2.5,"y":-3.5,"z":-0.6512842283556267,"i":2,"j":-4,"k":-1},
+{"x":2.5,"y":-2.5,"z":-0.625,"i":2,"j":-3,"k":-1},
+{"x":2.5,"y":-1.5,"z":-0.5860104348113153,"i":2,"j":-2,"k":-1},
+{"x":2.5,"y":-0.5,"z":-0.5314164790945005,"i":2,"j":-1,"k":-1},
+{"x":2.5,"y":0.5,"z":-1.4685835209054994,"i":2,"j":0,"k":-1},
+{"x":2.5,"y":1.5,"z":-1.4139895651886847,"i":2,"j":1,"k":-1},
+{"x":2.5,"y":2.5,"z":-1.375,"i":2,"j":2,"k":-1},
+{"x":2.5,"y":3.5,"z":-1.3487157716443732,"i":2,"j":3,"k":-1},
+{"x":3.5,"y":-3.5,"z":-0.625,"i":3,"j":-4,"k":-1},
+{"x":3.5,"y":-2.5,"z":-0.5987157716443733,"i":3,"j":-3,"k":-1},
+{"x":3.5,"y":-1.5,"z":-0.5644405292045783,"i":3,"j":-2,"k":-1},
+{"x":3.5,"y":-0.5,"z":-0.5225836176504333,"i":3,"j":-1,"k":-1},
+{"x":3.5,"y":0.5,"z":-1.4774163823495667,"i":3,"j":0,"k":-1},
+{"x":3.5,"y":1.5,"z":-1.4355594707954218,"i":3,"j":1,"k":-1},
+{"x":3.5,"y":2.5,"z":-1.4012842283556268,"i":3,"j":2,"k":-1},
+{"x":3.5,"y":3.5,"z":-1.375,"i":3,"j":3,"k":-1},
+{"x":-3.5,"y":-3.5,"z":0.125,"i":-4,"j":-4,"k":0},
+{"x":-3.5,"y":-2.5,"z":0.09871577164437328,"i":-4,"j":-3,"k":0},
+{"x":-3.5,"y":-1.5,"z":0.06444052920457832,"i":-4,"j":-2,"k":0},
+{"x":-3.5,"y":-0.5,"z":0.022583617650433263,"i":-4,"j":-1,"k":0},
+{"x":-3.5,"y":0.5,"z":-0.022583617650433263,"i":-4,"j":0,"k":0},
+{"x":-3.5,"y":1.5,"z":-0.06444052920457832,"i":-4,"j":1,"k":0},
+{"x":-3.5,"y":2.5,"z":-0.09871577164437328,"i":-4,"j":2,"k":0},
+{"x":-3.5,"y":3.5,"z":-0.125,"i":-4,"j":3,"k":0},
+{"x":-2.5,"y":-3.5,"z":0.15128422835562672,"i":-3,"j":-4,"k":0},
+{"x":-2.5,"y":-2.5,"z":0.125,"i":-3,"j":-3,"k":0},
+{"x":-2.5,"y":-1.5,"z":0.08601043481131532,"i":-3,"j":-2,"k":0},
+{"x":-2.5,"y":-0.5,"z":0.031416479094500516,"i":-3,"j":-1,"k":0},
+{"x":-2.5,"y":0.5,"z":-0.031416479094500516,"i":-3,"j":0,"k":0},
+{"x":-2.5,"y":1.5,"z":-0.08601043481131532,"i":-3,"j":1,"k":0},
+{"x":-2.5,"y":2.5,"z":-0.125,"i":-3,"j":2,"k":0},
+{"x":-2.5,"y":3.5,"z":-0.15128422835562672,"i":-3,"j":3,"k":0},
+{"x":-1.5,"y":-3.5,"z":0.18555947079542168,"i":-2,"j":-4,"k":0},
+{"x":-1.5,"y":-2.5,"z":0.16398956518868468,"i":-2,"j":-3,"k":0},
+{"x":-1.5,"y":-1.5,"z":0.125,"i":-2,"j":-2,"k":0},
+{"x":-1.5,"y":-0.5,"z":0.05120819117478337,"i":-2,"j":-1,"k":0},
+{"x":-1.5,"y":0.5,"z":-0.05120819117478337,"i":-2,"j":0,"k":0},
+{"x":-1.5,"y":1.5,"z":-0.125,"i":-2,"j":1,"k":0},
+{"x":-1.5,"y":2.5,"z":-0.16398956518868468,"i":-2,"j":2,"k":0},
+{"x":-1.5,"y":3.5,"z":-0.18555947079542168,"i":-2,"j":3,"k":0},
+{"x":-0.5,"y":-3.5,"z":0.22741638234956674,"i":-1,"j":-4,"k":0},
+{"x":-0.5,"y":-2.5,"z":0.21858352090549948,"i":-1,"j":-3,"k":0},
+{"x":-0.5,"y":-1.5,"z":0.19879180882521663,"i":-1,"j":-2,"k":0},
+{"x":-0.5,"y":-0.5,"z":0.125,"i":-1,"j":-1,"k":0},
+{"x":-0.5,"y":0.5,"z":-0.125,"i":-1,"j":0,"k":0},
+{"x":-0.5,"y":1.5,"z":-0.19879180882521663,"i":-1,"j":1,"k":0},
+{"x":-0.5,"y":2.5,"z":-0.21858352090549937,"i":-1,"j":2,"k":0},
+{"x":-0.5,"y":3.5,"z":-0.22741638234956674,"i":-1,"j":3,"k":0},
+{"x":0.5,"y":-3.5,"z":0.27258361765043326,"i":0,"j":-4,"k":0},
+{"x":0.5,"y":-2.5,"z":0.2814164790945005,"i":0,"j":-3,"k":0},
+{"x":0.5,"y":-1.5,"z":0.30120819117478337,"i":0,"j":-2,"k":0},
+{"x":0.5,"y":-0.5,"z":0.375,"i":0,"j":-1,"k":0},
+{"x":0.5,"y":0.5,"z":-0.375,"i":0,"j":0,"k":0},
+{"x":0.5,"y":1.5,"z":-0.30120819117478337,"i":0,"j":1,"k":0},
+{"x":0.5,"y":2.5,"z":-0.28141647909450057,"i":0,"j":2,"k":0},
+{"x":0.5,"y":3.5,"z":-0.27258361765043326,"i":0,"j":3,"k":0},
+{"x":1.5,"y":-3.5,"z":0.3144405292045783,"i":1,"j":-4,"k":0},
+{"x":1.5,"y":-2.5,"z":0.3360104348113153,"i":1,"j":-3,"k":0},
+{"x":1.5,"y":-1.5,"z":0.375,"i":1,"j":-2,"k":0},
+{"x":1.5,"y":-0.5,"z":0.44879180882521663,"i":1,"j":-1,"k":0},
+{"x":1.5,"y":0.5,"z":-0.44879180882521663,"i":1,"j":0,"k":0},
+{"x":1.5,"y":1.5,"z":-0.375,"i":1,"j":1,"k":0},
+{"x":1.5,"y":2.5,"z":-0.3360104348113153,"i":1,"j":2,"k":0},
+{"x":1.5,"y":3.5,"z":-0.3144405292045783,"i":1,"j":3,"k":0},
+{"x":2.5,"y":-3.5,"z":0.3487157716443733,"i":2,"j":-4,"k":0},
+{"x":2.5,"y":-2.5,"z":0.375,"i":2,"j":-3,"k":0},
+{"x":2.5,"y":-1.5,"z":0.4139895651886847,"i":2,"j":-2,"k":0},
+{"x":2.5,"y":-0.5,"z":0.4685835209054995,"i":2,"j":-1,"k":0},
+{"x":2.5,"y":0.5,"z":-0.46858352090549943,"i":2,"j":0,"k":0},
+{"x":2.5,"y":1.5,"z":-0.4139895651886847,"i":2,"j":1,"k":0},
+{"x":2.5,"y":2.5,"z":-0.375,"i":2,"j":2,"k":0},
+{"x":2.5,"y":3.5,"z":-0.3487157716443733,"i":2,"j":3,"k":0},
+{"x":3.5,"y":-3.5,"z":0.375,"i":3,"j":-4,"k":0},
+{"x":3.5,"y":-2.5,"z":0.4012842283556267,"i":3,"j":-3,"k":0},
+{"x":3.5,"y":-1.5,"z":0.4355594707954217,"i":3,"j":-2,"k":0},
+{"x":3.5,"y":-0.5,"z":0.47741638234956674,"i":3,"j":-1,"k":0},
+{"x":3.5,"y":0.5,"z":-0.47741638234956674,"i":3,"j":0,"k":0},
+{"x":3.5,"y":1.5,"z":-0.4355594707954217,"i":3,"j":1,"k":0},
+{"x":3.5,"y":2.5,"z":-0.4012842283556267,"i":3,"j":2,"k":0},
+{"x":3.5,"y":3.5,"z":-0.375,"i":3,"j":3,"k":0},
+{"x":-3.5,"y":-3.5,"z":1.125,"i":-4,"j":-4,"k":1},
+{"x":-3.5,"y":-2.5,"z":1.0987157716443732,"i":-4,"j":-3,"k":1},
+{"x":-3.5,"y":-1.5,"z":1.0644405292045782,"i":-4,"j":-2,"k":1},
+{"x":-3.5,"y":-0.5,"z":1.0225836176504333,"i":-4,"j":-1,"k":1},
+{"x":-3.5,"y":0.5,"z":0.9774163823495667,"i":-4,"j":0,"k":1},
+{"x":-3.5,"y":1.5,"z":0.9355594707954218,"i":-4,"j":1,"k":1},
+{"x":-3.5,"y":2.5,"z":0.9012842283556268,"i":-4,"j":2,"k":1},
+{"x":-3.5,"y":3.5,"z":0.875,"i":-4,"j":3,"k":1},
+{"x":-2.5,"y":-3.5,"z":1.1512842283556268,"i":-3,"j":-4,"k":1},
+{"x":-2.5,"y":-2.5,"z":1.125,"i":-3,"j":-3,"k":1},
+{"x":-2.5,"y":-1.5,"z":1.0860104348113153,"i":-3,"j":-2,"k":1},
+{"x":-2.5,"y":-0.5,"z":1.0314164790945006,"i":-3,"j":-1,"k":1},
+{"x":-2.5,"y":0.5,"z":0.9685835209054994,"i":-3,"j":0,"k":1},
+{"x":-2.5,"y":1.5,"z":0.9139895651886847,"i":-3,"j":1,"k":1},
+{"x":-2.5,"y":2.5,"z":0.875,"i":-3,"j":2,"k":1},
+{"x":-2.5,"y":3.5,"z":0.8487157716443732,"i":-3,"j":3,"k":1},
+{"x":-1.5,"y":-3.5,"z":1.1855594707954218,"i":-2,"j":-4,"k":1},
+{"x":-1.5,"y":-2.5,"z":1.1639895651886847,"i":-2,"j":-3,"k":1},
+{"x":-1.5,"y":-1.5,"z":1.125,"i":-2,"j":-2,"k":1},
+{"x":-1.5,"y":-0.5,"z":1.0512081911747835,"i":-2,"j":-1,"k":1},
+{"x":-1.5,"y":0.5,"z":0.9487918088252165,"i":-2,"j":0,"k":1},
+{"x":-1.5,"y":1.5,"z":0.875,"i":-2,"j":1,"k":1},
+{"x":-1.5,"y":2.5,"z":0.8360104348113153,"i":-2,"j":2,"k":1},
+{"x":-1.5,"y":3.5,"z":0.8144405292045782,"i":-2,"j":3,"k":1},
+{"x":-0.5,"y":-3.5,"z":1.2274163823495667,"i":-1,"j":-4,"k":1},
+{"x":-0.5,"y":-2.5,"z":1.2185835209054994,"i":-1,"j":-3,"k":1},
+{"x":-0.5,"y":-1.5,"z":1.1987918088252165,"i":-1,"j":-2,"k":1},
+{"x":-0.5,"y":-0.5,"z":1.125,"i":-1,"j":-1,"k":1},
+{"x":-0.5,"y":0.5,"z":0.875,"i":-1,"j":0,"k":1},
+{"x":-0.5,"y":1.5,"z":0.8012081911747835,"i":-1,"j":1,"k":1},
+{"x":-0.5,"y":2.5,"z":0.7814164790945006,"i":-1,"j":2,"k":1},
+{"x":-0.5,"y":3.5,"z":0.7725836176504333,"i":-1,"j":3,"k":1},
+{"x":0.5,"y":-3.5,"z":1.2725836176504333,"i":0,"j":-4,"k":1},
+{"x":0.5,"y":-2.5,"z":1.2814164790945006,"i":0,"j":-3,"k":1},
+{"x":0.5,"y":-1.5,"z":1.3012081911747835,"i":0,"j":-2,"k":1},
+{"x":0.5,"y":-0.5,"z":1.375,"i":0,"j":-1,"k":1},
+{"x":0.5,"y":0.5,"z":0.625,"i":0,"j":0,"k":1},
+{"x":0.5,"y":1.5,"z":0.6987918088252165,"i":0,"j":1,"k":1},
+{"x":0.5,"y":2.5,"z":0.7185835209054994,"i":0,"j":2,"k":1},
+{"x":0.5,"y":3.5,"z":0.7274163823495667,"i":0,"j":3,"k":1},
+{"x":1.5,"y":-3.5,"z":1.3144405292045782,"i":1,"j":-4,"k":1},
+{"x":1.5,"y":-2.5,"z":1.3360104348113153,"i":1,"j":-3,"k":1},
+{"x":1.5,"y":-1.5,"z":1.375,"i":1,"j":-2,"k":1},
+{"x":1.5,"y":-0.5,"z":1.4487918088252165,"i":1,"j":-1,"k":1},
+{"x":1.5,"y":0.5,"z":0.5512081911747833,"i":1,"j":0,"k":1},
+{"x":1.5,"y":1.5,"z":0.625,"i":1,"j":1,"k":1},
+{"x":1.5,"y":2.5,"z":0.6639895651886847,"i":1,"j":2,"k":1},
+{"x":1.5,"y":3.5,"z":0.6855594707954218,"i":1,"j":3,"k":1},
+{"x":2.5,"y":-3.5,"z":1.3487157716443732,"i":2,"j":-4,"k":1},
+{"x":2.5,"y":-2.5,"z":1.375,"i":2,"j":-3,"k":1},
+{"x":2.5,"y":-1.5,"z":1.4139895651886847,"i":2,"j":-2,"k":1},
+{"x":2.5,"y":-0.5,"z":1.4685835209054994,"i":2,"j":-1,"k":1},
+{"x":2.5,"y":0.5,"z":0.5314164790945006,"i":2,"j":0,"k":1},
+{"x":2.5,"y":1.5,"z":0.5860104348113153,"i":2,"j":1,"k":1},
+{"x":2.5,"y":2.5,"z":0.625,"i":2,"j":2,"k":1},
+{"x":2.5,"y":3.5,"z":0.6512842283556268,"i":2,"j":3,"k":1},
+{"x":3.5,"y":-3.5,"z":1.375,"i":3,"j":-4,"k":1},
+{"x":3.5,"y":-2.5,"z":1.4012842283556268,"i":3,"j":-3,"k":1},
+{"x":3.5,"y":-1.5,"z":1.4355594707954218,"i":3,"j":-2,"k":1},
+{"x":3.5,"y":-0.5,"z":1.4774163823495667,"i":3,"j":-1,"k":1},
+{"x":3.5,"y":0.5,"z":0.5225836176504333,"i":3,"j":0,"k":1},
+{"x":3.5,"y":1.5,"z":0.5644405292045782,"i":3,"j":1,"k":1},
+{"x":3.5,"y":2.5,"z":0.5987157716443732,"i":3,"j":2,"k":1},
+{"x":3.5,"y":3.5,"z":0.625,"i":3,"j":3,"k":1},
+{"x":-3.5,"y":-3.5,"z":2.125,"i":-4,"j":-4,"k":2},
+{"x":-3.5,"y":-2.5,"z":2.098715771644373,"i":-4,"j":-3,"k":2},
+{"x":-3.5,"y":-1.5,"z":2.064440529204578,"i":-4,"j":-2,"k":2},
+{"x":-3.5,"y":-0.5,"z":2.022583617650433,"i":-4,"j":-1,"k":2},
+{"x":-3.5,"y":0.5,"z":1.977416382349567,"i":-4,"j":0,"k":2},
+{"x":-3.5,"y":1.5,"z":1.9355594707954218,"i":-4,"j":1,"k":2},
+{"x":-3.5,"y":2.5,"z":1.9012842283556268,"i":-4,"j":2,"k":2},
+{"x":-3.5,"y":3.5,"z":1.875,"i":-4,"j":3,"k":2},
+{"x":-2.5,"y":-3.5,"z":2.151284228355627,"i":-3,"j":-4,"k":2},
+{"x":-2.5,"y":-2.5,"z":2.125,"i":-3,"j":-3,"k":2},
+{"x":-2.5,"y":-1.5,"z":2.0860104348113153,"i":-3,"j":-2,"k":2},
+{"x":-2.5,"y":-0.5,"z":2.0314164790945006,"i":-3,"j":-1,"k":2},
+{"x":-2.5,"y":0.5,"z":1.9685835209054994,"i":-3,"j":0,"k":2},
+{"x":-2.5,"y":1.5,"z":1.9139895651886847,"i":-3,"j":1,"k":2},
+{"x":-2.5,"y":2.5,"z":1.875,"i":-3,"j":2,"k":2},
+{"x":-2.5,"y":3.5,"z":1.8487157716443732,"i":-3,"j":3,"k":2},
+{"x":-1.5,"y":-3.5,"z":2.185559470795422,"i":-2,"j":-4,"k":2},
+{"x":-1.5,"y":-2.5,"z":2.1639895651886847,"i":-2,"j":-3,"k":2},
+{"x":-1.5,"y":-1.5,"z":2.125,"i":-2,"j":-2,"k":2},
+{"x":-1.5,"y":-0.5,"z":2.0512081911747835,"i":-2,"j":-1,"k":2},
+{"x":-1.5,"y":0.5,"z":1.9487918088252165,"i":-2,"j":0,"k":2},
+{"x":-1.5,"y":1.5,"z":1.875,"i":-2,"j":1,"k":2},
+{"x":-1.5,"y":2.5,"z":1.8360104348113153,"i":-2,"j":2,"k":2},
+{"x":-1.5,"y":3.5,"z":1.8144405292045782,"i":-2,"j":3,"k":2},
+{"x":-0.5,"y":-3.5,"z":2.227416382349567,"i":-1,"j":-4,"k":2},
+{"x":-0.5,"y":-2.5,"z":2.2185835209054994,"i":-1,"j":-3,"k":2},
+{"x":-0.5,"y":-1.5,"z":2.1987918088252165,"i":-1,"j":-2,"k":2},
+{"x":-0.5,"y":-0.5,"z":2.125,"i":-1,"j":-1,"k":2},
+{"x":-0.5,"y":0.5,"z":1.875,"i":-1,"j":0,"k":2},
+{"x":-0.5,"y":1.5,"z":1.8012081911747835,"i":-1,"j":1,"k":2},
+{"x":-0.5,"y":2.5,"z":1.7814164790945006,"i":-1,"j":2,"k":2},
+{"x":-0.5,"y":3.5,"z":1.772583617650433,"i":-1,"j":3,"k":2},
+{"x":0.5,"y":-3.5,"z":2.272583617650433,"i":0,"j":-4,"k":2},
+{"x":0.5,"y":-2.5,"z":2.2814164790945006,"i":0,"j":-3,"k":2},
+{"x":0.5,"y":-1.5,"z":2.3012081911747835,"i":0,"j":-2,"k":2},
+{"x":0.5,"y":-0.5,"z":2.375,"i":0,"j":-1,"k":2},
+{"x":0.5,"y":0.5,"z":1.625,"i":0,"j":0,"k":2},
+{"x":0.5,"y":1.5,"z":1.6987918088252165,"i":0,"j":1,"k":2},
+{"x":0.5,"y":2.5,"z":1.7185835209054994,"i":0,"j":2,"k":2},
+{"x":0.5,"y":3.5,"z":1.727416382349567,"i":0,"j":3,"k":2},
+{"x":1.5,"y":-3.5,"z":2.314440529204578,"i":1,"j":-4,"k":2},
+{"x":1.5,"y":-2.5,"z":2.3360104348113153,"i":1,"j":-3,"k":2},
+{"x":1.5,"y":-1.5,"z":2.375,"i":1,"j":-2,"k":2},
+{"x":1.5,"y":-0.5,"z":2.4487918088252165,"i":1,"j":-1,"k":2},
+{"x":1.5,"y":0.5,"z":1.5512081911747835,"i":1,"j":0,"k":2},
+{"x":1.5,"y":1.5,"z":1.625,"i":1,"j":1,"k":2},
+{"x":1.5,"y":2.5,"z":1.6639895651886847,"i":1,"j":2,"k":2},
+{"x":1.5,"y":3.5,"z":1.6855594707954218,"i":1,"j":3,"k":2},
+{"x":2.5,"y":-3.5,"z":2.348715771644373,"i":2,"j":-4,"k":2},
+{"x":2.5,"y":-2.5,"z":2.375,"i":2,"j":-3,"k":2},
+{"x":2.5,"y":-1.5,"z":2.4139895651886847,"i":2,"j":-2,"k":2},
+{"x":2.5,"y":-0.5,"z":2.4685835209054994,"i":2,"j":-1,"k":2},
+{"x":2.5,"y":0.5,"z":1.5314164790945006,"i":2,"j":0,"k":2},
+{"x":2.5,"y":1.5,"z":1.5860104348113153,"i":2,"j":1,"k":2},
+{"x":2.5,"y":2.5,"z":1.625,"i":2,"j":2,"k":2},
+{"x":2.5,"y":3.5,"z":1.6512842283556268,"i":2,"j":3,"k":2},
+{"x":3.5,"y":-3.5,"z":2.375,"i":3,"j":-4,"k":2},
+{"x":3.5,"y":-2.5,"z":2.401284228355627,"i":3,"j":-3,"k":2},
+{"x":3.5,"y":-1.5,"z":2.435559470795422,"i":3,"j":-2,"k":2},
+{"x":3.5,"y":-0.5,"z":2.477416382349567,"i":3,"j":-1,"k":2},
+{"x":3.5,"y":0.5,"z":1.5225836176504335,"i":3,"j":0,"k":2},
+{"x":3.5,"y":1.5,"z":1.5644405292045782,"i":3,"j":1,"k":2},
+{"x":3.5,"y":2.5,"z":1.5987157716443732,"i":3,"j":2,"k":2},
+{"x":3.5,"y":3.5,"z":1.625,"i":3,"j":3,"k":2}
+]</script>
+  <script>
+    'use strict';
+    (() => {
+      const atoms = JSON.parse(document.getElementById('atom-data').textContent);
+      const canvas = document.getElementById('model');
+      const ctx = canvas.getContext('2d');
+      const viewport = document.getElementById('viewport');
+      const controls = {
+        zoom:document.getElementById('zoom'), radius:document.getElementById('radius'),
+        crop:document.getElementById('crop'), axis:document.getElementById('axis'), spin:document.getElementById('spin')
+      };
+      if (!ctx) {
+        document.getElementById('status').textContent = 'Die 3D-Darstellung ist in diesem Browser nicht verfügbar.';
+        return;
+      }
+      const initial = {azimuth:-0.93, elevation:0.48, zoom:1, radius:0.28, crop:'all', axis:false, spin:false, preset:'spatial'};
+      const state = {...initial};
+      const clamp = (n,lo,hi) => Math.max(lo,Math.min(hi,n));
+      const pointers = new Map();
+      let width=0, height=0, dpr=1, scale=1, frame=0, lastFrame=0;
+      let sprite=null, spriteSize=0;
+      const TAU = 2*Math.PI;
+      const visibleAtoms = () => state.crop==='core' ? atoms.filter(a=>Math.abs(a.x)<2 && Math.abs(a.y)<2) : atoms;
+
+      function project(p) {
+        const ca=Math.cos(state.azimuth), sa=Math.sin(state.azimuth), ce=Math.cos(state.elevation), se=Math.sin(state.elevation);
+        return {x:(-sa*p.x+ca*p.y)*scale+width/2,
+          y:(se*ca*p.x+se*sa*p.y-ce*p.z)*scale+height/2,
+          depth:ce*ca*p.x+ce*sa*p.y+se*p.z};
+      }
+      // A single neutral material is used for EVERY atom, including k = 0.
+      function sphereSprite(radius) {
+        const size=Math.max(16,Math.ceil(radius*2*dpr));
+        if(sprite && spriteSize===size) return sprite;
+        spriteSize=size;
+        sprite=document.createElement('canvas'); sprite.width=sprite.height=size+4;
+        const c=sprite.getContext('2d'), r=size/2, mid=(size+4)/2;
+        const g=c.createRadialGradient(mid-r*.33,mid-r*.37,r*.04,mid,mid,r);
+        g.addColorStop(0,'#ffffff'); g.addColorStop(.22,'#dfe2e1');
+        g.addColorStop(.52,'#a4aaa9'); g.addColorStop(.78,'#777f7f'); g.addColorStop(1,'#424b4c');
+        c.fillStyle=g; c.beginPath(); c.arc(mid,mid,r,0,TAU); c.fill();
+        return sprite;
+      }
+      function paint() {
+        if(!width || !height) return;
+        ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,width,height);
+        const core=state.crop==='core';
+        scale=Math.min((width-40)/(core?6.2:11.5),(height-85)/(core?7.5:10))*state.zoom;
+        scale=Math.max(1,scale);
+        const marks=visibleAtoms().map(a=>({kind:'atom',p:project(a)}));
+        if(state.axis) for(let z=-3.2;z<3.2;z+=.24) {
+          const p=project({x:0,y:0,z}), q=project({x:0,y:0,z:z+.12});
+          marks.push({kind:'axis',p,q});
+        }
+        marks.sort((a,b)=>a.p.depth-b.p.depth);
+        const r=state.radius*scale, texture=sphereSprite(r);
+        const size=2*r*(1+4/spriteSize);
+        for(const m of marks) {
+          if(m.kind==='atom') ctx.drawImage(texture,m.p.x-size/2,m.p.y-size/2,size,size);
+          else { ctx.strokeStyle='#a56242'; ctx.lineWidth=1.7; ctx.beginPath();ctx.moveTo(m.p.x,m.p.y);ctx.lineTo(m.q.x,m.q.y);ctx.stroke(); }
+        }
+        if(state.axis) {
+          const p=project({x:0,y:0,z:3.5});
+          ctx.font='12px system-ui, sans-serif';ctx.fillStyle='#8a4c32';ctx.textAlign='center';ctx.fillText('z ∥ b',p.x,p.y-9);
+        }
+        canvas.dataset.atomCount=String(visibleAtoms().length);
+        canvas.dataset.radius=String(state.radius);
+        canvas.dataset.azimuth=String(state.azimuth);
+        canvas.dataset.elevation=String(state.elevation);
+        canvas.dataset.zoom=String(state.zoom);
+      }
+      function tick(time) {
+        frame=0;
+        if(state.spin && !document.hidden && pointers.size===0) {
+          if(lastFrame) state.azimuth += Math.min((time-lastFrame)/1000,.05)*.25;
+        }
+        lastFrame=time; paint();
+        if(state.spin && !document.hidden) frame=requestAnimationFrame(tick);
+      }
+      function invalidate() { if(!frame) frame=requestAnimationFrame(tick); }
+      function sync() {
+        controls.zoom.value=String(state.zoom); controls.radius.value=String(state.radius);
+        controls.crop.value=state.crop; controls.axis.checked=state.axis; controls.spin.checked=state.spin;
+        document.getElementById('zoom-value').value=Math.round(state.zoom*100)+' %';
+        document.getElementById('radius-value').value=state.radius.toFixed(2).replace('.',',')+' a';
+        document.getElementById('scene-label').textContent=state.crop==='core'?'Kernumgebung · 4 × 4 × 5 Atome':'Ganzes Gitter · 8 × 8 × 5 Atome';
+        document.querySelectorAll('[data-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.view===state.preset)));
+        invalidate();
+      }
+      function manualRotation(dx,dy) {
+        state.azimuth-=dx*.008;
+        state.elevation=clamp(state.elevation+dy*.008,-Math.PI/2,Math.PI/2);
+        state.preset=''; state.spin=false; sync();
+      }
+      function reset() { Object.assign(state,initial);lastFrame=0;sync();document.getElementById('status').textContent='Ausgangsansicht wiederhergestellt.'; }
+      controls.zoom.addEventListener('input',()=>{state.zoom=Number(controls.zoom.value);sync();});
+      controls.radius.addEventListener('input',()=>{state.radius=Number(controls.radius.value);sync();});
+      controls.crop.addEventListener('change',()=>{state.crop=controls.crop.value;state.zoom=1;sync();});
+      controls.axis.addEventListener('change',()=>{state.axis=controls.axis.checked;sync();});
+      controls.spin.addEventListener('change',()=>{state.spin=controls.spin.checked;if(state.spin)state.preset='';lastFrame=0;sync();});
+      document.getElementById('reset').addEventListener('click',reset);
+      document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{
+        state.preset=b.dataset.view;state.spin=false;
+        if(state.preset==='spatial'){state.azimuth=initial.azimuth;state.elevation=initial.elevation;}
+        else if(state.preset==='top'){state.azimuth=-Math.PI/2;state.elevation=Math.PI/2;}
+        else {state.azimuth=0;state.elevation=0;}
+        sync();
+      }));
+      function distance(){const [a,b]=[...pointers.values()];return a&&b?Math.hypot(a.x-b.x,a.y-b.y):null;}
+      canvas.addEventListener('pointerdown',e=>{
+        if(e.pointerType==='mouse' && e.button!==0)return;
+        canvas.focus({preventScroll:true});canvas.setPointerCapture(e.pointerId);
+        pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+        state.spin=false;sync();
+      });
+      canvas.addEventListener('pointermove',e=>{
+        const old=pointers.get(e.pointerId);if(!old)return;
+        const before=distance();pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+        if(pointers.size===1)manualRotation(e.clientX-old.x,e.clientY-old.y);
+        else {const after=distance();if(before>0 && after>0)state.zoom=clamp(state.zoom*after/before,.55,2.5);sync();}
+      });
+      const release=e=>pointers.delete(e.pointerId);
+      canvas.addEventListener('pointerup',release);canvas.addEventListener('pointercancel',release);canvas.addEventListener('lostpointercapture',release);
+      canvas.addEventListener('wheel',e=>{
+        e.preventDefault(); const delta=e.deltaY*(e.deltaMode===1?16:e.deltaMode===2?height:1);
+        state.zoom=clamp(state.zoom*Math.exp(-delta*.001),.55,2.5);sync();
+      },{passive:false});
+      canvas.addEventListener('keydown',e=>{
+        if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','+','=','-','r','R','Home'].includes(e.key))e.preventDefault();
+        if(e.key==='ArrowLeft')manualRotation(-12,0);
+        else if(e.key==='ArrowRight')manualRotation(12,0);
+        else if(e.key==='ArrowUp')manualRotation(0,12);
+        else if(e.key==='ArrowDown')manualRotation(0,-12);
+        else if(e.key==='+'||e.key==='='){state.zoom=clamp(state.zoom*1.1,.55,2.5);sync();}
+        else if(e.key==='-'){state.zoom=clamp(state.zoom/1.1,.55,2.5);sync();}
+        else if(e.key.toLowerCase()==='r'||e.key==='Home')reset();
+      });
+      const full=document.getElementById('fullscreen');
+      if(document.fullscreenEnabled && viewport.requestFullscreen) {
+        full.hidden=false;
+        full.addEventListener('click',async()=>{
+          try {if(document.fullscreenElement)await document.exitFullscreen();else await viewport.requestFullscreen();}
+          catch {document.getElementById('status').textContent='Vollbild ist in diesem Browser nicht verfügbar.';}
+        });
+        document.addEventListener('fullscreenchange',()=>{
+          const label=document.fullscreenElement?'Vollbild beenden':'Modell im Vollbild anzeigen';full.setAttribute('aria-label',label);full.title=label;
+        });
+      }
+      document.addEventListener('visibilitychange',()=>{lastFrame=0;if(!document.hidden)invalidate();});
+      new ResizeObserver(()=>{
+        const box=canvas.getBoundingClientRect();width=box.width;height=box.height;dpr=Math.min(window.devicePixelRatio||1,2);
+        canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);invalidate();
+      }).observe(viewport);
+      sync();
+    })();
+  </script>
+</body>
+</html>
