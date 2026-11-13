@@ -338,128 +338,229 @@
 {"x":3.5,"y":3.5,"z":1.625,"i":3,"j":3,"k":2}
 ]</script>
   <script>
-    'use strict';
-    (() => {
-      const atoms = JSON.parse(document.getElementById('atom-data').textContent);
-      const canvas = document.getElementById('model');
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      // Model geometry is fixed. Only the viewing direction and zoom can change.
-      const ATOM_RADIUS = 0.28; // in units of a
-      const LINE_HALF_LENGTH = 3.4; // x = y = 0, parallel to b = a [001]
-      const LINE_WIDTH = 3.5; // CSS pixels
-      const initial = {azimuth:-0.93, elevation:0.48, zoom:1};
-      const state = {...initial};
-      const clamp = (n,lo,hi) => Math.max(lo,Math.min(hi,n));
-      const pointers = new Map();
-      const TAU = 2*Math.PI;
-      let width=0, height=0, dpr=1, scale=1, frame=0;
-      let sprite=null, spriteSize=0;
+'use strict';
+(() => {
+  const atoms = JSON.parse(document.getElementById('atom-data').textContent);
+  const canvas = document.getElementById('model');
+  const gl = canvas.getContext('webgl', {alpha:true, antialias:true, depth:true});
+  if (!gl) { console.error('WebGL is required for the 3D viewer.'); return; }
 
-      function project(p) {
-        const ca=Math.cos(state.azimuth), sa=Math.sin(state.azimuth);
-        const ce=Math.cos(state.elevation), se=Math.sin(state.elevation);
-        return {
-          x:(-sa*p.x+ca*p.y)*scale+width/2,
-          y:(se*ca*p.x+se*sa*p.y-ce*p.z)*scale+height/2,
-          depth:ce*ca*p.x+ce*sa*p.y+se*p.z
-        };
+  // All dimensions are in lattice units a. The model itself never changes.
+  const ATOM_RADIUS = 0.28;
+  const LINE_RADIUS = 0.035;
+  const LINE_HALF_LENGTH = 3.4;
+  const initial = {azimuth:-0.93, elevation:0.48, zoom:1};
+  const state = {...initial};
+  const clamp = (n,lo,hi) => Math.max(lo,Math.min(hi,n));
+  const pointers = new Map();
+  let width=0, height=0, frame=0, contextLost=false;
+
+  // Shared indexed meshes: real sphere surfaces and a capped central cylinder.
+  function sphereGeometry() {
+    const vertices=[], indices=[], rows=24, columns=32;
+    for(let row=0;row<=rows;row++) {
+      const phi=Math.PI*row/rows;
+      for(let col=0;col<=columns;col++) {
+        const theta=2*Math.PI*col/columns;
+        const x=Math.sin(phi)*Math.cos(theta), y=Math.sin(phi)*Math.sin(theta), z=Math.cos(phi);
+        vertices.push(x,y,z,x,y,z);
       }
-      // Every atom uses the same neutral sphere material.
-      function sphereSprite(radius) {
-        const size=Math.max(16,Math.ceil(radius*2*dpr));
-        if(sprite && spriteSize===size) return sprite;
-        spriteSize=size;
-        sprite=document.createElement('canvas'); sprite.width=sprite.height=size+4;
-        const c=sprite.getContext('2d'), r=size/2, mid=(size+4)/2;
-        const g=c.createRadialGradient(mid-r*.33,mid-r*.37,r*.04,mid,mid,r);
-        g.addColorStop(0,'#ffffff'); g.addColorStop(.22,'#dfe2e1');
-        g.addColorStop(.52,'#a4aaa9'); g.addColorStop(.78,'#777f7f'); g.addColorStop(1,'#424b4c');
-        c.fillStyle=g; c.beginPath(); c.arc(mid,mid,r,0,TAU); c.fill();
-        return sprite;
+    }
+    for(let row=0;row<rows;row++) for(let col=0;col<columns;col++) {
+      const a=row*(columns+1)+col, b=a+columns+1;
+      indices.push(a,b,a+1,a+1,b,b+1);
+    }
+    return {vertices,indices};
+  }
+  function cylinderGeometry() {
+    const vertices=[], indices=[], segments=32;
+    for(let i=0;i<=segments;i++) {
+      const angle=2*Math.PI*i/segments, x=Math.cos(angle), y=Math.sin(angle);
+      vertices.push(x,y,-1,x,y,0, x,y,1,x,y,0);
+    }
+    for(let i=0;i<segments;i++) {
+      const a=2*i;
+      indices.push(a,a+2,a+1, a+1,a+2,a+3);
+    }
+    for(const end of [-1,1]) {
+      const center=vertices.length/6;
+      vertices.push(0,0,end,0,0,end);
+      for(let i=0;i<=segments;i++) {
+        const angle=2*Math.PI*i/segments;
+        vertices.push(Math.cos(angle),Math.sin(angle),end,0,0,end);
       }
-      function paint() {
-        frame=0;
-        if(!width || !height) return;
-        ctx.setTransform(dpr,0,0,dpr,0,0);
-        ctx.clearRect(0,0,width,height);
-        scale=Math.max(1,Math.min(width/11.8,height/11.8)*state.zoom);
-        const points=atoms.map(project).sort((a,b)=>a.depth-b.depth);
-        const r=ATOM_RADIUS*scale, texture=sphereSprite(r);
-        const size=2*r*(1+4/spriteSize);
-        // Draw the line first; opaque atom spheres cover it where they overlap.
-        const p=project({x:0,y:0,z:-LINE_HALF_LENGTH});
-        const q=project({x:0,y:0,z:LINE_HALF_LENGTH});
-        ctx.strokeStyle='#000000'; ctx.fillStyle='#000000';
-        ctx.lineWidth=LINE_WIDTH; ctx.lineCap='round';
-        ctx.setLineDash([]);
-        if(Math.hypot(q.x-p.x,q.y-p.y)<0.5) {
-          ctx.beginPath(); ctx.arc(p.x,p.y,LINE_WIDTH/2,0,TAU); ctx.fill();
+      for(let i=0;i<segments;i++) indices.push(center,center+1+i,center+2+i);
+    }
+    return {vertices,indices};
+  }
+
+  function createRenderer() {
+    const vertexSource = `
+      attribute vec3 aPosition;
+      attribute vec3 aNormal;
+      uniform mat3 uRotation;
+      uniform vec2 uHalfExtents;
+      uniform vec3 uOffset;
+      uniform vec3 uScale;
+      varying vec3 vNormal;
+      void main() {
+        vec3 view = uRotation * (aPosition * uScale + uOffset);
+        gl_Position = vec4(view.xy / uHalfExtents, -view.z / 32.0, 1.0);
+        vNormal = uRotation * (aNormal / uScale);
+      }
+    `;
+    const fragmentSource = `
+      precision mediump float;
+      uniform vec3 uColor;
+      uniform float uUnlit;
+      varying vec3 vNormal;
+      void main() {
+        if (uUnlit > 0.5) {
+          gl_FragColor = vec4(uColor, 1.0);
         } else {
-          ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(q.x,q.y); ctx.stroke();
+          vec3 n = normalize(vNormal);
+          vec3 light = normalize(vec3(-0.45, 0.7, 1.2));
+          float diffuse = max(dot(n, light), 0.0);
+          float specular = pow(max(dot(reflect(-light, n), vec3(0.0, 0.0, 1.0)), 0.0), 36.0);
+          gl_FragColor = vec4(uColor * (0.33 + 0.67 * diffuse) + vec3(0.4 * specular), 1.0);
         }
-        for(const p of points) ctx.drawImage(texture,p.x-size/2,p.y-size/2,size,size);
       }
-      function invalidate() { if(!frame) frame=requestAnimationFrame(paint); }
-      function rotate(dx,dy) {
-        state.azimuth-=dx*.008;
-        state.elevation=clamp(state.elevation+dy*.008,-Math.PI/2,Math.PI/2);
-        invalidate();
+    `;
+    function shader(type,source) {
+      const result=gl.createShader(type);
+      gl.shaderSource(result,source); gl.compileShader(result);
+      if(!gl.getShaderParameter(result,gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(result));
+      return result;
+    }
+    const vertex=shader(gl.VERTEX_SHADER,vertexSource), fragment=shader(gl.FRAGMENT_SHADER,fragmentSource);
+    const program=gl.createProgram();
+    gl.attachShader(program,vertex); gl.attachShader(program,fragment); gl.linkProgram(program);
+    if(!gl.getProgramParameter(program,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+    gl.deleteShader(vertex); gl.deleteShader(fragment);
+    const position=gl.getAttribLocation(program,'aPosition'), normal=gl.getAttribLocation(program,'aNormal');
+    const uniforms={};
+    for(const name of ['uRotation','uHalfExtents','uOffset','uScale','uColor','uUnlit']) uniforms[name]=gl.getUniformLocation(program,name);
+    function upload(geometry) {
+      const vertexBuffer=gl.createBuffer(), indexBuffer=gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER,vertexBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(geometry.vertices),gl.STATIC_DRAW);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,indexBuffer);
+      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(geometry.indices),gl.STATIC_DRAW);
+      return {vertexBuffer,indexBuffer,count:geometry.indices.length};
+    }
+    const sphere=upload(sphereGeometry()), cylinder=upload(cylinderGeometry());
+    function bind(mesh) {
+      gl.bindBuffer(gl.ARRAY_BUFFER,mesh.vertexBuffer);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,mesh.indexBuffer);
+      gl.enableVertexAttribArray(position); gl.enableVertexAttribArray(normal);
+      gl.vertexAttribPointer(position,3,gl.FLOAT,false,24,0);
+      gl.vertexAttribPointer(normal,3,gl.FLOAT,false,24,12);
+    }
+    return () => {
+      gl.viewport(0,0,canvas.width,canvas.height);
+      gl.clearColor(0,0,0,0); gl.clearDepth(1);
+      gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LESS); gl.depthMask(true);
+      gl.disable(gl.BLEND); gl.disable(gl.CULL_FACE);
+      gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+      gl.useProgram(program);
+      const ca=Math.cos(state.azimuth), sa=Math.sin(state.azimuth);
+      const ce=Math.cos(state.elevation), se=Math.sin(state.elevation);
+      // Column-major world-to-view rotation: right, up, towards the camera.
+      gl.uniformMatrix3fv(uniforms.uRotation,false,new Float32Array([
+        -sa,-se*ca,ce*ca, ca,-se*sa,ce*sa, 0,ce,se
+      ]));
+      const scale=Math.min(width,height)/11.8*state.zoom;
+      gl.uniform2f(uniforms.uHalfExtents,width/(2*scale),height/(2*scale));
+      bind(sphere);
+      gl.uniform3f(uniforms.uScale,ATOM_RADIUS,ATOM_RADIUS,ATOM_RADIUS);
+      gl.uniform3f(uniforms.uColor,0.64,0.67,0.67); gl.uniform1f(uniforms.uUnlit,0);
+      for(const atom of atoms) {
+        gl.uniform3f(uniforms.uOffset,atom.x,atom.y,atom.z);
+        gl.drawElements(gl.TRIANGLES,sphere.count,gl.UNSIGNED_SHORT,0);
       }
-      function reset() { Object.assign(state,initial); invalidate(); }
-      function distance() {
-        const [a,b]=[...pointers.values()];
-        return a&&b?Math.hypot(a.x-b.x,a.y-b.y):null;
-      }
-      canvas.addEventListener('pointerdown',e=>{
-        if(e.pointerType==='mouse' && e.button!==0) return;
-        canvas.focus({preventScroll:true});
-        canvas.setPointerCapture(e.pointerId);
-        pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
-      });
-      canvas.addEventListener('pointermove',e=>{
-        const old=pointers.get(e.pointerId);
-        if(!old) return;
-        const before=distance();
-        pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
-        if(pointers.size===1) rotate(e.clientX-old.x,e.clientY-old.y);
-        else {
-          const after=distance();
-          if(before>0 && after>0) state.zoom=clamp(state.zoom*after/before,.55,2.5);
-          invalidate();
-        }
-      });
-      const release=e=>pointers.delete(e.pointerId);
-      canvas.addEventListener('pointerup',release);
-      canvas.addEventListener('pointercancel',release);
-      canvas.addEventListener('lostpointercapture',release);
-      window.addEventListener('blur',()=>pointers.clear());
-      canvas.addEventListener('wheel',e=>{
-        e.preventDefault();
-        const delta=e.deltaY*(e.deltaMode===1?16:e.deltaMode===2?height:1);
-        state.zoom=clamp(state.zoom*Math.exp(-delta*.001),.55,2.5);
-        invalidate();
-      },{passive:false});
-      canvas.addEventListener('keydown',e=>{
-        if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','+','=','-','r','R','Home'].includes(e.key)) e.preventDefault();
-        if(e.key==='ArrowLeft') rotate(-12,0);
-        else if(e.key==='ArrowRight') rotate(12,0);
-        else if(e.key==='ArrowUp') rotate(0,12);
-        else if(e.key==='ArrowDown') rotate(0,-12);
-        else if(e.key==='+'||e.key==='=') {state.zoom=clamp(state.zoom*1.1,.55,2.5); invalidate();}
-        else if(e.key==='-') {state.zoom=clamp(state.zoom/1.1,.55,2.5); invalidate();}
-        else if(e.key.toLowerCase()==='r'||e.key==='Home') reset();
-      });
-      function resize() {
-        const box=canvas.getBoundingClientRect();
-        width=box.width; height=box.height; dpr=Math.min(window.devicePixelRatio||1,2);
-        canvas.width=Math.round(width*dpr); canvas.height=Math.round(height*dpr);
-        invalidate();
-      }
-      new ResizeObserver(resize).observe(canvas);
-      window.addEventListener('resize',resize);
-      resize();
-    })();
+      // The cylinder uses the SAME depth buffer as the spheres. Drawing it last
+      // does not make it an overlay: only its nearest visible surface survives.
+      bind(cylinder);
+      gl.uniform3f(uniforms.uOffset,0,0,0);
+      gl.uniform3f(uniforms.uScale,LINE_RADIUS,LINE_RADIUS,LINE_HALF_LENGTH);
+      gl.uniform3f(uniforms.uColor,0,0,0); gl.uniform1f(uniforms.uUnlit,1);
+      gl.drawElements(gl.TRIANGLES,cylinder.count,gl.UNSIGNED_SHORT,0);
+    };
+  }
+  let render=createRenderer();
+  function paint() {
+    frame=0;
+    if(!width||!height||contextLost) return;
+    render();
+    canvas.dataset.renderer='webgl-depth';
+    canvas.dataset.atomCount=String(atoms.length);
+    canvas.dataset.radius=String(ATOM_RADIUS);
+    canvas.dataset.azimuth=String(state.azimuth);
+    canvas.dataset.elevation=String(state.elevation);
+    canvas.dataset.zoom=String(state.zoom);
+  }
+  function invalidate() { if(!frame) frame=requestAnimationFrame(paint); }
+  function rotate(dx,dy) {
+    state.azimuth-=dx*.008;
+    state.elevation=clamp(state.elevation+dy*.008,-Math.PI/2,Math.PI/2);
+    invalidate();
+  }
+  function reset() { Object.assign(state,initial); invalidate(); }
+  function distance() {
+    const [a,b]=[...pointers.values()];
+    return a&&b?Math.hypot(a.x-b.x,a.y-b.y):null;
+  }
+  canvas.addEventListener('pointerdown',e=>{
+    if(e.pointerType==='mouse' && e.button!==0) return;
+    canvas.focus({preventScroll:true});
+    canvas.setPointerCapture(e.pointerId);
+    pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  });
+  canvas.addEventListener('pointermove',e=>{
+    const old=pointers.get(e.pointerId);
+    if(!old) return;
+    const before=distance();
+    pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(pointers.size===1) rotate(e.clientX-old.x,e.clientY-old.y);
+    else {
+      const after=distance();
+      if(before>0 && after>0) state.zoom=clamp(state.zoom*after/before,.55,2.5);
+      invalidate();
+    }
+  });
+  const release=e=>pointers.delete(e.pointerId);
+  canvas.addEventListener('pointerup',release);
+  canvas.addEventListener('pointercancel',release);
+  canvas.addEventListener('lostpointercapture',release);
+  window.addEventListener('blur',()=>pointers.clear());
+  canvas.addEventListener('wheel',e=>{
+    e.preventDefault();
+    const delta=e.deltaY*(e.deltaMode===1?16:e.deltaMode===2?height:1);
+    state.zoom=clamp(state.zoom*Math.exp(-delta*.001),.55,2.5);
+    invalidate();
+  },{passive:false});
+  canvas.addEventListener('keydown',e=>{
+    if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','+','=','-','r','R','Home'].includes(e.key)) e.preventDefault();
+    if(e.key==='ArrowLeft') rotate(-12,0);
+    else if(e.key==='ArrowRight') rotate(12,0);
+    else if(e.key==='ArrowUp') rotate(0,12);
+    else if(e.key==='ArrowDown') rotate(0,-12);
+    else if(e.key==='+'||e.key==='=') {state.zoom=clamp(state.zoom*1.1,.55,2.5); invalidate();}
+    else if(e.key==='-') {state.zoom=clamp(state.zoom/1.1,.55,2.5); invalidate();}
+    else if(e.key.toLowerCase()==='r'||e.key==='Home') reset();
+  });
+  function resize() {
+    const box=canvas.getBoundingClientRect(), dpr=Math.min(window.devicePixelRatio||1,2);
+    width=box.width; height=box.height;
+    canvas.width=Math.round(width*dpr); canvas.height=Math.round(height*dpr);
+    invalidate();
+  }
+  canvas.addEventListener('webglcontextlost',e=>{e.preventDefault(); contextLost=true;});
+  canvas.addEventListener('webglcontextrestored',()=>{render=createRenderer(); contextLost=false; invalidate();});
+  new ResizeObserver(resize).observe(canvas);
+  window.addEventListener('resize',resize);
+  resize();
+})();
   </script>
 </body>
 </html>
