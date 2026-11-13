@@ -3,8 +3,8 @@
 Ein bildschirmfüllender 3D-Viewer ohne sichtbare Texte, Menüs oder Regler.
 Alle 320 Atomkugeln sind grau und haben den festen Radius **0,28 a**.
 Die Versetzungslinie bei x = y = 0 ist immer eingeschaltet, schwarz,
-durchgezogen und 3,5 Bildschirmpixel dick. Sie wird als Orientierungslinie
-über den Kugeln gezeichnet, damit sie durchgehend sichtbar bleibt.
+durchgezogen und 3,5 Bildschirmpixel dick. Sie wird hinter den Kugeln
+gezeichnet und an überlappenden Stellen von ihnen verdeckt.
 Beim Blick exakt entlang der Linie erscheint sie als Punkt.
 
 ## Veröffentlichen oder vorhandene Website aktualisieren

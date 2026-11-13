@@ -387,8 +387,7 @@
         const points=atoms.map(project).sort((a,b)=>a.depth-b.depth);
         const r=ATOM_RADIUS*scale, texture=sphereSprite(r);
         const size=2*r*(1+4/spriteSize);
-        for(const p of points) ctx.drawImage(texture,p.x-size/2,p.y-size/2,size,size);
-        // Draw as a continuous orientation overlay so the line stays visible.
+        // Draw the line first; opaque atom spheres cover it where they overlap.
         const p=project({x:0,y:0,z:-LINE_HALF_LENGTH});
         const q=project({x:0,y:0,z:LINE_HALF_LENGTH});
         ctx.strokeStyle='#000000'; ctx.fillStyle='#000000';
@@ -399,6 +398,7 @@
         } else {
           ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(q.x,q.y); ctx.stroke();
         }
+        for(const p of points) ctx.drawImage(texture,p.x-size/2,p.y-size/2,size,size);
       }
       function invalidate() { if(!frame) frame=requestAnimationFrame(paint); }
       function rotate(dx,dy) {
