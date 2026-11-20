@@ -1,11 +1,26 @@
 # SC-Schraubenversetzung – GitHub Pages
 
-Ein bildschirmfüllender 3D-Viewer ohne sichtbare Texte, Menüs oder Regler.
+Ein bildschirmfüllender 3D-Viewer mit zwei Vektorpfeilen und einer 90°-Taste.
 Alle 320 Atomkugeln sind grau und haben den festen Radius **0,28 a**.
-Die Versetzungslinie bei x = y = 0 ist immer eingeschaltet, schwarz,
-durchgezogen und 3,5 Bildschirmpixel dick. Sie wird hinter den Kugeln
-gezeichnet und an überlappenden Stellen von ihnen verdeckt.
-Beim Blick exakt entlang der Linie erscheint sie als Punkt.
+Die Versetzungslinie ist ein durchgehender schwarzer 3D-Zylinder bei x = y = 0,
+mit Radius 0,035 a und Enden bei z = ±3,4 a. Kugeln und Linie werden gemeinsam
+mit WebGL und einem Tiefenpuffer dargestellt: Vordere Kugeln verdecken die
+Linie; die Linie verdeckt dahinterliegende Kugeln. Diese Reihenfolge wird
+beim Drehen für jeden Bildpunkt bestimmt. Die Liniendicke skaliert beim
+Zoomen wie die übrige Geometrie. Beim Blick entlang der Linie ist ihre
+kreisförmige Stirnfläche sichtbar.
+
+## Vektoren
+
+- **Blau: Linienvektor ξ**, die gewählte positive Tangentenrichtung +[001].
+  Der Pfeil sitzt am positiven Ende der Versetzungslinie. ξ ist ein
+  dimensionsloser Einheitsvektor; seine gezeichnete Länge ist illustrativ.
+- **Rot: Burgersvektor b = a [001]**, parallel zum Linienvektor. Der Abstand
+  vom Pfeilanfang bis zur Spitze beträgt genau a. Zur besseren Sichtbarkeit
+  ist dieser freie Vektor seitlich versetzt gezeichnet.
+
+Beide Pfeile sind echte 3D-Geometrie mit derselben Tiefenprüfung wie die Atome.
+Die kleinen Beschriftungen ξ und b bleiben als Bildschirmanmerkungen lesbar.
 
 ## Veröffentlichen oder vorhandene Website aktualisieren
 
@@ -25,11 +40,16 @@ Offizielle Anleitung: https://docs.github.com/en/pages/quickstart
 
 - Mit der Maus oder einem Finger ziehen: drehen.
 - Mausrad oder zwei Finger: zoomen; Atomradius und Atompositionen bleiben fest.
+- **90° drehen**: gesamte Ansicht um genau 90° im Uhrzeigersinn drehen,
+  sodass die Versetzungslinie horizontal liegt. **90° zurück** stellt die
+  vertikale Ausrichtung wieder her. Blickwinkel und Zoom bleiben erhalten.
+  Beim Blick exakt entlang der Achse wird zusätzlich der anfängliche
+  Neigungswinkel wiederhergestellt, damit die Linie sichtbar wird.
 - Nach Anklicken des Modells: Pfeiltasten drehen, `+` und `-` zoomen, `R` setzt
   die Blickrichtung und den Zoom zurück.
 
-Der Viewer füllt die gesamte Website aus. Es gibt keine Bedienoberfläche,
-keine Beschriftungen, keine automatische Drehung und keine Ausschnittwahl.
+Der Viewer füllt die gesamte Website aus. Außer den Vektorbezeichnungen und
+der 90°-Taste gibt es keine weiteren Texte, Regler oder Menüs.
 
 ## Dateien
 
@@ -41,7 +61,7 @@ keine Beschriftungen, keine automatische Drehung und keine Ausschnittwahl.
 | `README.md` | Diese Anleitung; wird auf der Website nicht eingeblendet. |
 
 Keine Installation und keine externen Bibliotheken nötig. `index.html` lässt
-sich auch direkt per Doppelklick im Browser öffnen.
+sich auch direkt per Doppelklick in einem Browser mit aktiviertem WebGL öffnen.
 
 ## Modell
 
