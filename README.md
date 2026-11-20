@@ -38,7 +38,8 @@ Offizielle Anleitung: https://docs.github.com/en/pages/quickstart
 
 ## Bedienung
 
-- Mit der Maus oder einem Finger ziehen: drehen.
+- Mit der Maus oder einem Finger ziehen: drehen. Die Bewegung folgt auch
+  nach der 90°-Drehung den Bildschirmrichtungen, ohne vertauschte Achsen.
 - Mausrad oder zwei Finger: zoomen; Atomradius und Atompositionen bleiben fest.
 - **90° drehen**: gesamte Ansicht um genau 90° im Uhrzeigersinn drehen,
   sodass die Versetzungslinie horizontal liegt. **90° zurück** stellt die

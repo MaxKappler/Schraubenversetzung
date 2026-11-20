@@ -565,8 +565,12 @@
   }
   function invalidate() { if(!frame) frame=requestAnimationFrame(paint); }
   function rotate(dx,dy) {
-    state.azimuth-=dx*.008;
-    state.elevation=clamp(state.elevation+dy*.008,-Math.PI/2,Math.PI/2);
+    // Pointer movement is expressed in screen coordinates. Undo the displayed
+    // quarter-turn before applying it to the orbit's horizontal/vertical axes.
+    const c=Math.cos(state.roll), s=Math.sin(state.roll);
+    const orbitX=c*dx+s*dy, orbitY=-s*dx+c*dy;
+    state.azimuth-=orbitX*.008;
+    state.elevation=clamp(state.elevation+orbitY*.008,-Math.PI/2,Math.PI/2);
     invalidate();
   }
   function syncOrientationButton() {
@@ -620,8 +624,8 @@
     if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','+','=','-','r','R','Home'].includes(e.key)) e.preventDefault();
     if(e.key==='ArrowLeft') rotate(-12,0);
     else if(e.key==='ArrowRight') rotate(12,0);
-    else if(e.key==='ArrowUp') rotate(0,12);
-    else if(e.key==='ArrowDown') rotate(0,-12);
+    else if(e.key==='ArrowUp') rotate(0,-12);
+    else if(e.key==='ArrowDown') rotate(0,12);
     else if(e.key==='+'||e.key==='=') {state.zoom=clamp(state.zoom*1.1,.55,2.5); invalidate();}
     else if(e.key==='-') {state.zoom=clamp(state.zoom/1.1,.55,2.5); invalidate();}
     else if(e.key.toLowerCase()==='r'||e.key==='Home') reset();
