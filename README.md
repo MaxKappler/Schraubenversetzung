@@ -1,26 +1,11 @@
 # SC-Schraubenversetzung – GitHub Pages
 
-Ein bildschirmfüllender 3D-Viewer mit zwei Vektorpfeilen und einer 90°-Taste.
+Ein bildschirmfüllender 3D-Viewer ohne sichtbare Texte, Menüs oder Regler.
 Alle 320 Atomkugeln sind grau und haben den festen Radius **0,28 a**.
-Die Versetzungslinie ist ein durchgehender schwarzer 3D-Zylinder bei x = y = 0,
-mit Radius 0,035 a und Enden bei z = ±3,4 a. Kugeln und Linie werden gemeinsam
-mit WebGL und einem Tiefenpuffer dargestellt: Vordere Kugeln verdecken die
-Linie; die Linie verdeckt dahinterliegende Kugeln. Diese Reihenfolge wird
-beim Drehen für jeden Bildpunkt bestimmt. Die Liniendicke skaliert beim
-Zoomen wie die übrige Geometrie. Beim Blick entlang der Linie ist ihre
-kreisförmige Stirnfläche sichtbar.
-
-## Vektoren
-
-- **Blau: Linienvektor ξ**, die gewählte positive Tangentenrichtung +[001].
-  Der Pfeil sitzt am positiven Ende der Versetzungslinie. ξ ist ein
-  dimensionsloser Einheitsvektor; seine gezeichnete Länge ist illustrativ.
-- **Rot: Burgersvektor b = a [001]**, parallel zum Linienvektor. Der Abstand
-  vom Pfeilanfang bis zur Spitze beträgt genau a. Zur besseren Sichtbarkeit
-  ist dieser freie Vektor seitlich versetzt gezeichnet.
-
-Beide Pfeile sind echte 3D-Geometrie mit derselben Tiefenprüfung wie die Atome.
-Die kleinen Beschriftungen ξ und b bleiben als Bildschirmanmerkungen lesbar.
+Die Versetzungslinie bei x = y = 0 ist immer eingeschaltet, schwarz,
+durchgezogen und 3,5 Bildschirmpixel dick. Sie wird hinter den Kugeln
+gezeichnet und an überlappenden Stellen von ihnen verdeckt.
+Beim Blick exakt entlang der Linie erscheint sie als Punkt.
 
 ## Veröffentlichen oder vorhandene Website aktualisieren
 
@@ -38,26 +23,13 @@ Offizielle Anleitung: https://docs.github.com/en/pages/quickstart
 
 ## Bedienung
 
-- Mit der Maus oder einem Finger ziehen: um die lokalen Kristallachsen drehen.
-  Horizontales Ziehen dreht um die lokale y-Achse, vertikales Ziehen um
-  die lokale x-Achse. Diese Achsen bleiben fest mit dem Kristall verbunden,
-  auch nach mehreren kombinierten Bewegungen und beim Überkopfdrehen.
-- Die Orientierung wird als normiertes Quaternion gespeichert. Es gibt keine
-  Polbegrenzung und kein Nachschwingen. Neue Rotationen werden von rechts
-  multipliziert (Local Space Rotation); die Pfeiltasten nutzen dieselben Achsen.
+- Mit der Maus oder einem Finger ziehen: drehen.
 - Mausrad oder zwei Finger: zoomen; Atomradius und Atompositionen bleiben fest.
-- **90° drehen**: aktuelle Ansicht um genau 90° um die Blickachse im
-  Uhrzeigersinn drehen. Aus der Ausgangsansicht liegt die Versetzungslinie
-  danach horizontal. **90° zurück** entfernt diese zusätzliche Drehung.
-  Die Taste schaltet ausschließlich den separaten Bildwinkel zwischen 0 und
-  -90° um. Diese Drehung wird erst bei der Darstellung auf Modell und
-  Labelpositionen angewendet; lokale Objektorientierung und Zoom bleiben
-  unverändert. Beim freien Drehen wird die Linie nicht horizontal festgehalten.
 - Nach Anklicken des Modells: Pfeiltasten drehen, `+` und `-` zoomen, `R` setzt
   die Blickrichtung und den Zoom zurück.
 
-Der Viewer füllt die gesamte Website aus. Außer den Vektorbezeichnungen und
-der 90°-Taste gibt es keine weiteren Texte, Regler oder Menüs.
+Der Viewer füllt die gesamte Website aus. Es gibt keine Bedienoberfläche,
+keine Beschriftungen, keine automatische Drehung und keine Ausschnittwahl.
 
 ## Dateien
 
@@ -69,7 +41,7 @@ der 90°-Taste gibt es keine weiteren Texte, Regler oder Menüs.
 | `README.md` | Diese Anleitung; wird auf der Website nicht eingeblendet. |
 
 Keine Installation und keine externen Bibliotheken nötig. `index.html` lässt
-sich auch direkt per Doppelklick in einem Browser mit aktiviertem WebGL öffnen.
+sich auch direkt per Doppelklick im Browser öffnen.
 
 ## Modell
 

@@ -11,20 +11,10 @@
     body { background:radial-gradient(ellipse at center,#fff 0%,#fafbf9 65%,#f1f3ee 100%); }
     canvas { position:fixed; inset:0; display:block; width:100%; height:100%; cursor:grab; touch-action:none; outline:none; }
     canvas:active { cursor:grabbing; }
-    .vector-label { position:fixed; transform:translate(-50%,-50%); pointer-events:none; font:italic 600 21px Georgia,serif; text-shadow:0 0 4px #fff,0 0 4px #fff; }
-    #line-vector-label { color:#1f5ea6; }
-    #burgers-vector-label { color:#b83324; }
-    #rotate-90 { position:fixed; top:16px; right:16px; z-index:2; padding:10px 15px; min-height:44px; border:1px solid #cdd1d0; border-radius:8px; background:#fffffff0; color:#303638; font:14px system-ui,sans-serif; cursor:pointer; }
-    #rotate-90:hover { background:#f1f3f2; }
-    #rotate-90:focus-visible { outline:2px solid #1f5ea6; outline-offset:3px; }
-    [hidden] { display:none !important; }
   </style>
 </head>
 <body>
   <canvas id="model" tabindex="0" role="img" aria-label="Drehbares SC-Atommodell. Ziehen zum Drehen, Mausrad oder zwei Finger zum Zoomen. Pfeiltasten drehen; R setzt die Ansicht zurück."></canvas>
-  <span id="line-vector-label" class="vector-label" role="img" aria-label="Linienvektor xi, Richtung plus 001">ξ</span>
-  <span id="burgers-vector-label" class="vector-label" role="img" aria-label="Burgersvektor b gleich a mal 001">b</span>
-  <button id="rotate-90" type="button" aria-pressed="false" title="Ansicht um 90° im Uhrzeigersinn drehen">90° drehen</button>
   <script id="atom-data" type="application/json">[
 {"x":-3.5,"y":-3.5,"z":-1.875,"i":-4,"j":-4,"k":-2},
 {"x":-3.5,"y":-2.5,"z":-1.9012842283556268,"i":-4,"j":-3,"k":-2},
@@ -359,17 +349,8 @@
   const ATOM_RADIUS = 0.28;
   const LINE_RADIUS = 0.035;
   const LINE_HALF_LENGTH = 3.4;
-  const vectors = [
-    {origin:[0,0,3.4], length:1, color:[0.12,0.37,0.65], label:document.getElementById('line-vector-label')},
-    {origin:[0.9,0.9,3.4], length:1, color:[0.72,0.20,0.14], label:document.getElementById('burgers-vector-label')}
-  ];
-  const orientationButton=document.getElementById('rotate-90');
-  const ROTATION_SPEED = 0.006;
-  const initialOrientation=normalizeQuaternion(multiplyQuaternions(
-    axisAngle(1,0,0,0.48-Math.PI/2),
-    axisAngle(0,0,1,0.93-Math.PI/2)
-  ));
-  const state = {orientation:[...initialOrientation], zoom:1, roll:0};
+  const initial = {azimuth:-0.93, elevation:0.48, zoom:1};
+  const state = {...initial};
   const clamp = (n,lo,hi) => Math.max(lo,Math.min(hi,n));
   const pointers = new Map();
   let width=0, height=0, frame=0, contextLost=false;
@@ -411,65 +392,6 @@
       for(let i=0;i<segments;i++) indices.push(center,center+1+i,center+2+i);
     }
     return {vertices,indices};
-  }
-
-  // Cone along +z, from z=0 to z=1; scaled to the arrowhead dimensions.
-  function coneGeometry() {
-    const vertices=[], indices=[], segments=32;
-    for(let i=0;i<segments;i++) {
-      const a=2*Math.PI*i/segments, b=2*Math.PI*(i+1)/segments, mid=(a+b)/2;
-      const start=vertices.length/6;
-      vertices.push(Math.cos(a),Math.sin(a),0,Math.cos(a),Math.sin(a),1);
-      vertices.push(Math.cos(b),Math.sin(b),0,Math.cos(b),Math.sin(b),1);
-      vertices.push(0,0,1,Math.cos(mid),Math.sin(mid),1);
-      vertices.push(0,0,0,0,0,-1);
-      vertices.push(Math.cos(b),Math.sin(b),0,0,0,-1);
-      vertices.push(Math.cos(a),Math.sin(a),0,0,0,-1);
-      indices.push(start,start+1,start+2,start+3,start+4,start+5);
-    }
-    return {vertices,indices};
-  }
-
-  function axisAngle(x,y,z,angle) {
-    const s=Math.sin(angle/2);
-    return [x*s,y*s,z*s,Math.cos(angle/2)];
-  }
-  function multiplyQuaternions(a,b) {
-    const [ax,ay,az,aw]=a, [bx,by,bz,bw]=b;
-    return [
-      aw*bx+ax*bw+ay*bz-az*by,
-      aw*by-ax*bz+ay*bw+az*bx,
-      aw*bz+ax*by-ay*bx+az*bw,
-      aw*bw-ax*bx-ay*by-az*bz
-    ];
-  }
-  function normalizeQuaternion(q) {
-    const length=Math.hypot(...q);
-    return q.map(value=>value/length);
-  }
-  function applyLocalRotation(rotation) {
-    // Right-multiplication applies the increment about the crystal's local axes.
-    // The separate display roll never changes this intrinsic orientation.
-    state.orientation=normalizeQuaternion(multiplyQuaternions(state.orientation,rotation));
-    invalidate();
-  }
-  function viewRotation() {
-    const finalOrientation=multiplyQuaternions(axisAngle(0,0,1,state.roll),state.orientation);
-    const [x,y,z,w]=finalOrientation;
-    return new Float32Array([
-      1-2*(y*y+z*z), 2*(x*y+z*w), 2*(x*z-y*w),
-      2*(x*y-z*w), 1-2*(x*x+z*z), 2*(y*z+x*w),
-      2*(x*z+y*w), 2*(y*z-x*w), 1-2*(x*x+y*y)
-    ]);
-  }
-  function positionLabels(matrix,scale) {
-    for(const vector of vectors) {
-      const [x,y,z]=vector.origin, tip=z+vector.length+0.25;
-      const screenX=(matrix[0]*x+matrix[3]*y+matrix[6]*tip)*scale+width/2;
-      const screenY=height/2-(matrix[1]*x+matrix[4]*y+matrix[7]*tip)*scale;
-      vector.label.style.left=screenX+'px'; vector.label.style.top=screenY+'px';
-      vector.label.hidden=screenX<8||screenX>width-8||screenY<8||screenY>height-8;
-    }
   }
 
   function createRenderer() {
@@ -526,7 +448,7 @@
       gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,new Uint16Array(geometry.indices),gl.STATIC_DRAW);
       return {vertexBuffer,indexBuffer,count:geometry.indices.length};
     }
-    const sphere=upload(sphereGeometry()), cylinder=upload(cylinderGeometry()), cone=upload(coneGeometry());
+    const sphere=upload(sphereGeometry()), cylinder=upload(cylinderGeometry());
     function bind(mesh) {
       gl.bindBuffer(gl.ARRAY_BUFFER,mesh.vertexBuffer);
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,mesh.indexBuffer);
@@ -541,8 +463,12 @@
       gl.disable(gl.BLEND); gl.disable(gl.CULL_FACE);
       gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
       gl.useProgram(program);
-      const matrix=viewRotation();
-      gl.uniformMatrix3fv(uniforms.uRotation,false,matrix);
+      const ca=Math.cos(state.azimuth), sa=Math.sin(state.azimuth);
+      const ce=Math.cos(state.elevation), se=Math.sin(state.elevation);
+      // Column-major world-to-view rotation: right, up, towards the camera.
+      gl.uniformMatrix3fv(uniforms.uRotation,false,new Float32Array([
+        -sa,-se*ca,ce*ca, ca,-se*sa,ce*sa, 0,ce,se
+      ]));
       const scale=Math.min(width,height)/11.8*state.zoom;
       gl.uniform2f(uniforms.uHalfExtents,width/(2*scale),height/(2*scale));
       bind(sphere);
@@ -559,21 +485,6 @@
       gl.uniform3f(uniforms.uScale,LINE_RADIUS,LINE_RADIUS,LINE_HALF_LENGTH);
       gl.uniform3f(uniforms.uColor,0,0,0); gl.uniform1f(uniforms.uUnlit,1);
       gl.drawElements(gl.TRIANGLES,cylinder.count,gl.UNSIGNED_SHORT,0);
-      // Both vectors point along +[001]. Their full tail-to-tip length is 1 a;
-      // for xi the displayed length is illustrative (xi is a unit tangent).
-      for(const vector of vectors) {
-        const [x,y,z]=vector.origin, head=0.24, shaft=vector.length-head;
-        gl.uniform3f(uniforms.uColor,...vector.color);
-        bind(cylinder);
-        gl.uniform3f(uniforms.uOffset,x,y,z+shaft/2);
-        gl.uniform3f(uniforms.uScale,0.045,0.045,shaft/2);
-        gl.drawElements(gl.TRIANGLES,cylinder.count,gl.UNSIGNED_SHORT,0);
-        bind(cone);
-        gl.uniform3f(uniforms.uOffset,x,y,z+shaft);
-        gl.uniform3f(uniforms.uScale,0.135,0.135,head);
-        gl.drawElements(gl.TRIANGLES,cone.count,gl.UNSIGNED_SHORT,0);
-      }
-      positionLabels(matrix,scale);
     };
   }
   let render=createRenderer();
@@ -584,33 +495,17 @@
     canvas.dataset.renderer='webgl-depth';
     canvas.dataset.atomCount=String(atoms.length);
     canvas.dataset.radius=String(ATOM_RADIUS);
-    canvas.dataset.orientation=JSON.stringify(state.orientation);
-    canvas.dataset.controls='local-axes-quaternion';
+    canvas.dataset.azimuth=String(state.azimuth);
+    canvas.dataset.elevation=String(state.elevation);
     canvas.dataset.zoom=String(state.zoom);
-    canvas.dataset.roll=String(state.roll);
   }
   function invalidate() { if(!frame) frame=requestAnimationFrame(paint); }
   function rotate(dx,dy) {
-    const distance=Math.hypot(dx,dy);
-    if(!distance) return;
-    // Right drag: +local-y rotation. Down drag: +local-x rotation.
-    // A diagonal drag is ONE axis-angle increment, without ordering artefacts.
-    applyLocalRotation(axisAngle(dy/distance,dx/distance,0,distance*ROTATION_SPEED));
+    state.azimuth-=dx*.008;
+    state.elevation=clamp(state.elevation+dy*.008,-Math.PI/2,Math.PI/2);
+    invalidate();
   }
-  function syncOrientationButton() {
-    const horizontal=state.roll!==0;
-    orientationButton.setAttribute('aria-pressed',String(horizontal));
-    orientationButton.textContent=horizontal?'90° zurück':'90° drehen';
-    orientationButton.title=horizontal?'Ansicht um 90° gegen den Uhrzeigersinn drehen':'Ansicht um 90° im Uhrzeigersinn drehen';
-  }
-  orientationButton.addEventListener('click',()=>{
-    state.roll=state.roll===0?-Math.PI/2:0;
-    syncOrientationButton(); invalidate(); canvas.focus({preventScroll:true});
-  });
-  function reset() {
-    state.orientation=[...initialOrientation]; state.zoom=1; state.roll=0;
-    syncOrientationButton(); invalidate();
-  }
+  function reset() { Object.assign(state,initial); invalidate(); }
   function distance() {
     const [a,b]=[...pointers.values()];
     return a&&b?Math.hypot(a.x-b.x,a.y-b.y):null;
@@ -648,8 +543,8 @@
     if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','+','=','-','r','R','Home'].includes(e.key)) e.preventDefault();
     if(e.key==='ArrowLeft') rotate(-12,0);
     else if(e.key==='ArrowRight') rotate(12,0);
-    else if(e.key==='ArrowUp') rotate(0,-12);
-    else if(e.key==='ArrowDown') rotate(0,12);
+    else if(e.key==='ArrowUp') rotate(0,12);
+    else if(e.key==='ArrowDown') rotate(0,-12);
     else if(e.key==='+'||e.key==='=') {state.zoom=clamp(state.zoom*1.1,.55,2.5); invalidate();}
     else if(e.key==='-') {state.zoom=clamp(state.zoom/1.1,.55,2.5); invalidate();}
     else if(e.key.toLowerCase()==='r'||e.key==='Home') reset();
