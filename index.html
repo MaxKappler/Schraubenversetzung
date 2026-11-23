@@ -24,7 +24,7 @@
   <canvas id="model" tabindex="0" role="img" aria-label="Drehbares SC-Atommodell. Ziehen zum Drehen, Mausrad oder zwei Finger zum Zoomen. Pfeiltasten drehen; R setzt die Ansicht zurück."></canvas>
   <span id="line-vector-label" class="vector-label" role="img" aria-label="Linienvektor xi, Richtung plus 001">ξ</span>
   <span id="burgers-vector-label" class="vector-label" role="img" aria-label="Burgersvektor b gleich a mal 001">b</span>
-  <button id="rotate-90" type="button" aria-pressed="false" title="Versetzungslinie horizontal ausrichten">90° drehen</button>
+  <button id="rotate-90" type="button" aria-pressed="false" title="Ansicht um 90° im Uhrzeigersinn drehen">90° drehen</button>
   <script id="atom-data" type="application/json">[
 {"x":-3.5,"y":-3.5,"z":-1.875,"i":-4,"j":-4,"k":-2},
 {"x":-3.5,"y":-2.5,"z":-1.9012842283556268,"i":-4,"j":-3,"k":-2},
@@ -364,8 +364,12 @@
     {origin:[0.9,0.9,3.4], length:1, color:[0.72,0.20,0.14], label:document.getElementById('burgers-vector-label')}
   ];
   const orientationButton=document.getElementById('rotate-90');
-  const initial = {azimuth:-0.93, elevation:0.48, zoom:1, roll:0};
-  const state = {...initial};
+  const ROTATION_SPEED = 0.006;
+  const initialOrientation=normalizeQuaternion(multiplyQuaternions(
+    axisAngle(1,0,0,0.48-Math.PI/2),
+    axisAngle(0,0,1,0.93-Math.PI/2)
+  ));
+  const state = {orientation:[...initialOrientation], zoom:1, roll:0};
   const clamp = (n,lo,hi) => Math.max(lo,Math.min(hi,n));
   const pointers = new Map();
   let width=0, height=0, frame=0, contextLost=false;
@@ -426,15 +430,36 @@
     return {vertices,indices};
   }
 
+  function axisAngle(x,y,z,angle) {
+    const s=Math.sin(angle/2);
+    return [x*s,y*s,z*s,Math.cos(angle/2)];
+  }
+  function multiplyQuaternions(a,b) {
+    const [ax,ay,az,aw]=a, [bx,by,bz,bw]=b;
+    return [
+      aw*bx+ax*bw+ay*bz-az*by,
+      aw*by-ax*bz+ay*bw+az*bx,
+      aw*bz+ax*by-ay*bx+az*bw,
+      aw*bw-ax*bx-ay*by-az*bz
+    ];
+  }
+  function normalizeQuaternion(q) {
+    const length=Math.hypot(...q);
+    return q.map(value=>value/length);
+  }
+  function applyScreenRotation(rotation) {
+    // Pre-multiplication applies the increment in CAMERA coordinates, not in
+    // crystal coordinates. No world-up constraint or Euler-angle pole remains.
+    state.orientation=normalizeQuaternion(multiplyQuaternions(rotation,state.orientation));
+    invalidate();
+  }
   function viewRotation() {
-    const ca=Math.cos(state.azimuth), sa=Math.sin(state.azimuth);
-    const ce=Math.cos(state.elevation), se=Math.sin(state.elevation);
-    // The quarter-turn is a rotation about the viewing axis, preserving depth.
-    const cr=Math.cos(state.roll), sr=Math.sin(state.roll);
-    const right=[-sa,ca,0], up=[-se*ca,-se*sa,ce], depth=[ce*ca,ce*sa,se];
-    const matrix=[];
-    for(let i=0;i<3;i++) matrix.push(cr*right[i]+sr*up[i],-sr*right[i]+cr*up[i],depth[i]);
-    return new Float32Array(matrix);
+    const [x,y,z,w]=state.orientation;
+    return new Float32Array([
+      1-2*(y*y+z*z), 2*(x*y+z*w), 2*(x*z-y*w),
+      2*(x*y-z*w), 1-2*(x*x+z*z), 2*(y*z+x*w),
+      2*(x*z+y*w), 2*(y*z-x*w), 1-2*(x*x+y*y)
+    ]);
   }
   function positionLabels(matrix,scale) {
     for(const vector of vectors) {
@@ -558,35 +583,35 @@
     canvas.dataset.renderer='webgl-depth';
     canvas.dataset.atomCount=String(atoms.length);
     canvas.dataset.radius=String(ATOM_RADIUS);
-    canvas.dataset.azimuth=String(state.azimuth);
-    canvas.dataset.elevation=String(state.elevation);
+    canvas.dataset.orientation=JSON.stringify(state.orientation);
+    canvas.dataset.controls='screen-axes-quaternion';
     canvas.dataset.zoom=String(state.zoom);
     canvas.dataset.roll=String(state.roll);
   }
   function invalidate() { if(!frame) frame=requestAnimationFrame(paint); }
   function rotate(dx,dy) {
-    // Pointer movement is expressed in screen coordinates. Undo the displayed
-    // quarter-turn before applying it to the orbit's horizontal/vertical axes.
-    const c=Math.cos(state.roll), s=Math.sin(state.roll);
-    const orbitX=c*dx+s*dy, orbitY=-s*dx+c*dy;
-    state.azimuth-=orbitX*.008;
-    state.elevation=clamp(state.elevation+orbitY*.008,-Math.PI/2,Math.PI/2);
-    invalidate();
+    const distance=Math.hypot(dx,dy);
+    if(!distance) return;
+    // Right drag: +camera-y rotation. Down drag: +camera-x rotation.
+    // A diagonal drag is ONE axis-angle increment, without ordering artefacts.
+    applyScreenRotation(axisAngle(dy/distance,dx/distance,0,distance*ROTATION_SPEED));
   }
   function syncOrientationButton() {
     const horizontal=state.roll!==0;
     orientationButton.setAttribute('aria-pressed',String(horizontal));
     orientationButton.textContent=horizontal?'90° zurück':'90° drehen';
-    orientationButton.title=horizontal?'Versetzungslinie wieder vertikal ausrichten':'Versetzungslinie horizontal ausrichten';
+    orientationButton.title=horizontal?'Ansicht um 90° gegen den Uhrzeigersinn drehen':'Ansicht um 90° im Uhrzeigersinn drehen';
   }
   orientationButton.addEventListener('click',()=>{
-    state.roll=state.roll===0?Math.PI/2:0;
-    // Looking exactly along the axis shows a point. Restore a slight oblique
-    // angle in that special case so the requested horizontal line is visible.
-    if(Math.abs(Math.cos(state.elevation))<0.0001) state.elevation=initial.elevation;
+    const clockwise=state.roll===0;
+    applyScreenRotation(axisAngle(0,0,1,clockwise?-Math.PI/2:Math.PI/2));
+    state.roll=clockwise?Math.PI/2:0;
     syncOrientationButton(); invalidate(); canvas.focus({preventScroll:true});
   });
-  function reset() { Object.assign(state,initial); syncOrientationButton(); invalidate(); }
+  function reset() {
+    state.orientation=[...initialOrientation]; state.zoom=1; state.roll=0;
+    syncOrientationButton(); invalidate();
+  }
   function distance() {
     const [a,b]=[...pointers.values()];
     return a&&b?Math.hypot(a.x-b.x,a.y-b.y):null;

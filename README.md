@@ -38,14 +38,18 @@ Offizielle Anleitung: https://docs.github.com/en/pages/quickstart
 
 ## Bedienung
 
-- Mit der Maus oder einem Finger ziehen: drehen. Die Bewegung folgt auch
-  nach der 90°-Drehung den Bildschirmrichtungen, ohne vertauschte Achsen.
+- Mit der Maus oder einem Finger ziehen: frei um die Bildschirmachsen drehen.
+  Horizontales Ziehen dreht um die sichtbare Hochachse, vertikales Ziehen um
+  die sichtbare Querachse. Dies gilt in jeder Lage, auch nach der 90°-Drehung,
+  nach mehreren kombinierten Bewegungen und beim Überkopfdrehen.
+- Die Orientierung wird als normiertes Quaternion gespeichert. Es gibt keine
+  Bindung an die Gitterachsen, keine Polbegrenzung und kein Nachschwingen.
 - Mausrad oder zwei Finger: zoomen; Atomradius und Atompositionen bleiben fest.
-- **90° drehen**: gesamte Ansicht um genau 90° im Uhrzeigersinn drehen,
-  sodass die Versetzungslinie horizontal liegt. **90° zurück** stellt die
-  vertikale Ausrichtung wieder her. Blickwinkel und Zoom bleiben erhalten.
-  Beim Blick exakt entlang der Achse wird zusätzlich der anfängliche
-  Neigungswinkel wiederhergestellt, damit die Linie sichtbar wird.
+- **90° drehen**: aktuelle Ansicht um genau 90° um die Blickachse im
+  Uhrzeigersinn drehen. Aus der Ausgangsansicht liegt die Versetzungslinie
+  danach horizontal. **90° zurück** dreht die aktuelle Ansicht um 90° zurück.
+  Beim anschließenden freien Drehen wird die Linie nicht künstlich horizontal
+  festgehalten. Der Zoom bleibt unverändert.
 - Nach Anklicken des Modells: Pfeiltasten drehen, `+` und `-` zoomen, `R` setzt
   die Blickrichtung und den Zoom zurück.
 
