@@ -38,18 +38,21 @@ Offizielle Anleitung: https://docs.github.com/en/pages/quickstart
 
 ## Bedienung
 
-- Mit der Maus oder einem Finger ziehen: frei um die Bildschirmachsen drehen.
-  Horizontales Ziehen dreht um die sichtbare Hochachse, vertikales Ziehen um
-  die sichtbare Querachse. Dies gilt in jeder Lage, auch nach der 90°-Drehung,
-  nach mehreren kombinierten Bewegungen und beim Überkopfdrehen.
+- Mit der Maus oder einem Finger ziehen: um die lokalen Kristallachsen drehen.
+  Horizontales Ziehen dreht um die lokale y-Achse, vertikales Ziehen um
+  die lokale x-Achse. Diese Achsen bleiben fest mit dem Kristall verbunden,
+  auch nach mehreren kombinierten Bewegungen und beim Überkopfdrehen.
 - Die Orientierung wird als normiertes Quaternion gespeichert. Es gibt keine
-  Bindung an die Gitterachsen, keine Polbegrenzung und kein Nachschwingen.
+  Polbegrenzung und kein Nachschwingen. Neue Rotationen werden von rechts
+  multipliziert (Local Space Rotation); die Pfeiltasten nutzen dieselben Achsen.
 - Mausrad oder zwei Finger: zoomen; Atomradius und Atompositionen bleiben fest.
 - **90° drehen**: aktuelle Ansicht um genau 90° um die Blickachse im
   Uhrzeigersinn drehen. Aus der Ausgangsansicht liegt die Versetzungslinie
-  danach horizontal. **90° zurück** dreht die aktuelle Ansicht um 90° zurück.
-  Beim anschließenden freien Drehen wird die Linie nicht künstlich horizontal
-  festgehalten. Der Zoom bleibt unverändert.
+  danach horizontal. **90° zurück** entfernt diese zusätzliche Drehung.
+  Die Taste schaltet ausschließlich den separaten Bildwinkel zwischen 0 und
+  -90° um. Diese Drehung wird erst bei der Darstellung auf Modell und
+  Labelpositionen angewendet; lokale Objektorientierung und Zoom bleiben
+  unverändert. Beim freien Drehen wird die Linie nicht horizontal festgehalten.
 - Nach Anklicken des Modells: Pfeiltasten drehen, `+` und `-` zoomen, `R` setzt
   die Blickrichtung und den Zoom zurück.
 

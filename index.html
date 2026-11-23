@@ -447,14 +447,15 @@
     const length=Math.hypot(...q);
     return q.map(value=>value/length);
   }
-  function applyScreenRotation(rotation) {
-    // Pre-multiplication applies the increment in CAMERA coordinates, not in
-    // crystal coordinates. No world-up constraint or Euler-angle pole remains.
-    state.orientation=normalizeQuaternion(multiplyQuaternions(rotation,state.orientation));
+  function applyLocalRotation(rotation) {
+    // Right-multiplication applies the increment about the crystal's local axes.
+    // The separate display roll never changes this intrinsic orientation.
+    state.orientation=normalizeQuaternion(multiplyQuaternions(state.orientation,rotation));
     invalidate();
   }
   function viewRotation() {
-    const [x,y,z,w]=state.orientation;
+    const finalOrientation=multiplyQuaternions(axisAngle(0,0,1,state.roll),state.orientation);
+    const [x,y,z,w]=finalOrientation;
     return new Float32Array([
       1-2*(y*y+z*z), 2*(x*y+z*w), 2*(x*z-y*w),
       2*(x*y-z*w), 1-2*(x*x+z*z), 2*(y*z+x*w),
@@ -584,7 +585,7 @@
     canvas.dataset.atomCount=String(atoms.length);
     canvas.dataset.radius=String(ATOM_RADIUS);
     canvas.dataset.orientation=JSON.stringify(state.orientation);
-    canvas.dataset.controls='screen-axes-quaternion';
+    canvas.dataset.controls='local-axes-quaternion';
     canvas.dataset.zoom=String(state.zoom);
     canvas.dataset.roll=String(state.roll);
   }
@@ -592,9 +593,9 @@
   function rotate(dx,dy) {
     const distance=Math.hypot(dx,dy);
     if(!distance) return;
-    // Right drag: +camera-y rotation. Down drag: +camera-x rotation.
+    // Right drag: +local-y rotation. Down drag: +local-x rotation.
     // A diagonal drag is ONE axis-angle increment, without ordering artefacts.
-    applyScreenRotation(axisAngle(dy/distance,dx/distance,0,distance*ROTATION_SPEED));
+    applyLocalRotation(axisAngle(dy/distance,dx/distance,0,distance*ROTATION_SPEED));
   }
   function syncOrientationButton() {
     const horizontal=state.roll!==0;
@@ -603,9 +604,7 @@
     orientationButton.title=horizontal?'Ansicht um 90° gegen den Uhrzeigersinn drehen':'Ansicht um 90° im Uhrzeigersinn drehen';
   }
   orientationButton.addEventListener('click',()=>{
-    const clockwise=state.roll===0;
-    applyScreenRotation(axisAngle(0,0,1,clockwise?-Math.PI/2:Math.PI/2));
-    state.roll=clockwise?Math.PI/2:0;
+    state.roll=state.roll===0?-Math.PI/2:0;
     syncOrientationButton(); invalidate(); canvas.focus({preventScroll:true});
   });
   function reset() {
